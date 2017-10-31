@@ -4,3 +4,7 @@
 cython/build
 outputs/*
 dataset/*
+*.pdf
+*.gv
+screenlog*
+models/*

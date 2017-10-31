@@ -12,8 +12,8 @@ import numpy as np
 
 
 from modelCPMWeight import CPMModel,numofparts,numoflinks
-save_prefix  = "../outputs/models/yks_pose"
-def getModule(prefix=None , begin_epoch=0, batch_size=10,re_init = False,gpus = [2,3,4,5]):
+save_prefix  = "models/yks_pose"
+def getModule(prefix=None , begin_epoch=0, batch_size=10,re_init = False,gpus = [2,3]):
     if re_init:
         print("reinit")
         sym = CPMModel(use_resnet = False)
