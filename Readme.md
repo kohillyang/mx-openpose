@@ -15,7 +15,7 @@
 
 
 1. This is a mxnet-openpose implemention which is based on [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>
-2. I have tested this code under 4 K60 GPUS, after about 9000 iterations with batch 32, the loss can converge to about 90-110.<br>
+2. I have tested this code under 4 K60 GPUS, after about 9000 iterations with batch 8, the loss can converge to about 90-110.<br>
 3. I'll upload the pretrained model after several days.<br>
 4. You can get more information from the original [caffe version](https://github.com/CMU-Perceptual-Computing-Lab/openpose).
 
