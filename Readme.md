@@ -16,7 +16,7 @@
 
 1. This is a mxnet-openpose implemention which is based on [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>
 2. I have tested this code under 4 K60 GPUS, after about 9000 iterations with batch 8, the loss can converge to about 90-110.<br>
-3. I'll upload the pretrained model after several days.<br>
+3. Pretrained models are in <http://pan.baidu.com/s/1gf3YHvP>,password is `x5tn`
 4. You can get more information from the original [caffe version](https://github.com/CMU-Perceptual-Computing-Lab/openpose).
 
 
@@ -31,5 +31,5 @@
 
 
 # Demo
-After you have trained your own model or download the pretrained model, you can run `python2 demo.py --images=/data1/yks/dataset/openpose_dataset/mpi/images --prefix="models/pose" --epoch=0` to evaluate the model.
+After you have trained your own model or download the pretrained model, you can run `python2 demo.py --images=/data1/yks/dataset/openpose_dataset/mpi/images --prefix="models/yks_pose" --epoch=8600` to evaluate the model.
 ``
