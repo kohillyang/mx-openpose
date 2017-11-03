@@ -8,3 +8,4 @@ dataset/*
 *.gv
 screenlog*
 models/*
+.vscode
