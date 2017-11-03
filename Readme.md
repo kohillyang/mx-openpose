@@ -13,6 +13,11 @@
 <img src="https://github.com/kohillyang/mx-openpose/blob/master/figures/Figure_4.png"><br><br>
 </div>
 
+# Training Process.
+Note for a bug, stage2 and stage 4's output are noise, which has already been fixed.
+
+(click me to see the Training Process.)[http://oj5adp5xv.bkt.clouddn.com/trainng_process.png]
+
 
 1. This is a mxnet-openpose implemention which is based on [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>
 2. I have tested this code under 4 K60 GPUS, after about 9000 iterations with batch 8, the loss can converge to about 90-110.<br>
