@@ -23,11 +23,16 @@ def CPMModel(use_resnet = False):
     heatweight = mx.sym.Variable('heatweight')
     
     vecweight = mx.sym.Variable('vecweight')
-    if use_resnet:
+    def _getResnet(_data):
         sym_resnet = resnet.sym.get_resnet_openpose_sym()
-        relu4_4_CPM = sym_resnet(name = "resnet",data = data)
-    else:
-        conv1_1 = mx.symbol.Convolution(name='conv1_1', data=data , num_filter=64, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+        r_re = sym_resnet(name = "resnet_152",data = _data)
+        conv1_2 = mx.symbol.Convolution(name='resnet_152_conv1', 
+                                        data=r_re , num_filter=128, 
+                                        pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False) 
+        relu1_1 = mx.symbol.Activation(name='resnet_relu1_1', data=conv1_2 , act_type='relu')               
+        return relu1_1
+    def _getVGG19(_data):
+        conv1_1 = mx.symbol.Convolution(name='conv1_1', data=_data , num_filter=64, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
         relu1_1 = mx.symbol.Activation(name='relu1_1', data=conv1_1 , act_type='relu')
         conv1_2 = mx.symbol.Convolution(name='conv1_2', data=relu1_1 , num_filter=64, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
         relu1_2 = mx.symbol.Activation(name='relu1_2', data=conv1_2 , act_type='relu')
@@ -54,9 +59,10 @@ def CPMModel(use_resnet = False):
         relu4_3_CPM = mx.symbol.Activation(name='relu4_3_CPM', data=conv4_3_CPM , act_type='relu')
         conv4_4_CPM = mx.symbol.Convolution(name='conv4_4_CPM', data=relu4_3_CPM , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
         relu4_4_CPM = mx.symbol.Activation(name='relu4_4_CPM', data=conv4_4_CPM , act_type='relu')
-    
-    
-    
+        return relu4_4_CPM
+    vgg_resnet_concat = mx.symbol.Concat(name='vgg_resnet_concat', *[_getResnet(_data = data),_getVGG19(_data = data)] )
+    relu4_4_CPM = mx.symbol.Convolution(name='relu4_4_CPM_afer_concat', data=vgg_resnet_concat , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)    
+#     relu4_4_CPM = _getResnet(_data = data) + _getVGG19(_data = data)
     conv5_1_CPM_L1 = mx.symbol.Convolution(name='conv5_1_CPM_L1', data=relu4_4_CPM , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
     relu5_1_CPM_L1 = mx.symbol.Activation(name='relu5_1_CPM_L1', data=conv5_1_CPM_L1 , act_type='relu')
     conv5_1_CPM_L2 = mx.symbol.Convolution(name='conv5_1_CPM_L2', data=relu4_4_CPM , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
@@ -75,6 +81,27 @@ def CPMModel(use_resnet = False):
     relu5_4_CPM_L2 = mx.symbol.Activation(name='relu5_4_CPM_L2', data=conv5_4_CPM_L2 , act_type='relu')
     conv5_5_CPM_L1 = mx.symbol.Convolution(name='conv5_5_CPM_L1', data=relu5_4_CPM_L1 , num_filter=numoflinks*2, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
     conv5_5_CPM_L2 = mx.symbol.Convolution(name='conv5_5_CPM_L2', data=relu5_4_CPM_L2 , num_filter=numofparts, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
+    
+    #############################################################################################
+    # B_conv5_1_CPM_L2 = mx.symbol.Convolution(name='B_conv5_1_CPM_L2', data=relu4_4_CPM , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+    # B_relu5_1_CPM_L2 = mx.symbol.Activation(name='B_relu5_1_CPM_L2', data=B_conv5_1_CPM_L2 , act_type='relu')
+    # B_conv5_2_CPM_L2 = mx.symbol.Convolution(name='B_conv5_2_CPM_L2', data=B_relu5_1_CPM_L2 , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+    # B_relu5_2_CPM_L2 = mx.symbol.Activation(name='B_relu5_2_CPM_L2', data=B_conv5_2_CPM_L2 , act_type='relu')
+    # B_conv5_3_CPM_L2 = mx.symbol.Convolution(name='B_conv5_3_CPM_L2', data=B_relu5_2_CPM_L2 , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+    # B_relu5_3_CPM_L2 = mx.symbol.Activation(name='B_relu5_3_CPM_L2', data=B_conv5_3_CPM_L2 , act_type='relu')
+    # B_conv5_4_CPM_L2 = mx.symbol.Convolution(name='B_conv5_4_CPM_L2', data=B_relu5_3_CPM_L2 , num_filter=512, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
+    # B_relu5_4_CPM_L2 = mx.symbol.Activation(name='B_relu5_4_CPM_L2', data=B_conv5_4_CPM_L2 , act_type='relu')
+    # B_conv5_5_CPM_L2 = mx.symbol.Convolution(name='B_conv5_5_CPM_L2', data=B_relu5_4_CPM_L2 , num_filter=numofparts, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
+    
+    # B_softmax_sum = mx.sym.exp(conv5_5_CPM_L2) + mx.sym.exp(B_conv5_5_CPM_L2)
+    # conv5_5_CPM_L2 = mx.sym.exp(conv5_5_CPM_L2)/B_softmax_sum
+    # B_conv5_5_CPM_L2 = mx.sym.exp(B_conv5_5_CPM_L2)/B_softmax_sum
+
+    # loss_cross_entropy = heatmaplabel * mx.sym.log(conv5_5_CPM_L2) + (1-heatmaplabel) * mx.sym.log(B_conv5_5_CPM_L2)
+    # loss_cross_entropy = mx.symbol.MakeLoss(-1 * loss_cross_entropy * heatweight)
+    #############################################################################################
+
+
     concat_stage2 = mx.symbol.Concat(name='concat_stage2', *[conv5_5_CPM_L1,conv5_5_CPM_L2,relu4_4_CPM] )
     Mconv1_stage2_L1 = mx.symbol.Convolution(name='Mconv1_stage2_L1', data=concat_stage2 , num_filter=128, pad=(3,3), kernel=(7,7), stride=(1,1), no_bias=False)
     Mrelu1_stage2_L1 = mx.symbol.Activation(name='Mrelu1_stage2_L1', data=Mconv1_stage2_L1 , act_type='relu')
@@ -226,92 +253,91 @@ def CPMModel(use_resnet = False):
     partaffinityglabel = sfa(partaffinityglabel)
     heatmaplabel  = sfa(heatmaplabel)
 
-    conv5_5_CPM_L1r = (mx.symbol.Reshape(data=conv5_5_CPM_L1, shape=(-1,), name='conv5_5_CPM_L1r'))
-    partaffinityglabelr = (mx.symbol.Reshape(data=partaffinityglabel, shape=(-1, ), name='partaffinityglabelr'))
-    stage1_loss_L1s = mx.symbol.square(conv5_5_CPM_L1r-(partaffinityglabelr))
+    conv5_5_CPM_L1r = mx.symbol.Reshape(data=conv5_5_CPM_L1, shape=(-1,), name='conv5_5_CPM_L1r')
+    partaffinityglabelr = mx.symbol.Reshape(data=partaffinityglabel, shape=(-1, ), name='partaffinityglabelr')
+    stage1_loss_L1s = mx.symbol.square(conv5_5_CPM_L1r-partaffinityglabelr)
     vecweightw = mx.symbol.Reshape(data=vecweight, shape=(-1,), name='conv5_5_CPM_L1w')
     stage1_loss_L1w = stage1_loss_L1s*vecweightw
     stage1_loss_L1  = mx.symbol.MakeLoss(stage1_loss_L1w)
     
-    conv5_5_CPM_L2r = (mx.symbol.Reshape(data=conv5_5_CPM_L2, shape=(-1,), name='conv5_5_CPM_L2r'))
-    heatmaplabelr = (mx.symbol.Reshape(data=heatmaplabel, shape=(-1, ), name='heatmaplabelr'))
-    stage1_loss_L2s = mx.symbol.square(conv5_5_CPM_L2r-(heatmaplabelr))
+    conv5_5_CPM_L2r = mx.symbol.Reshape(data=conv5_5_CPM_L2, shape=(-1,), name='conv5_5_CPM_L2r')
+    heatmaplabelr = mx.symbol.Reshape(data=heatmaplabel, shape=(-1, ), name='heatmaplabelr')
+    stage1_loss_L2s = mx.symbol.square(conv5_5_CPM_L2r-heatmaplabelr)
     heatweightw = mx.symbol.Reshape(data=heatweight, shape=(-1,), name='conv5_5_CPM_L2w')
     stage1_loss_L2w = stage1_loss_L2s*heatweightw
     stage1_loss_L2  = mx.symbol.MakeLoss(stage1_loss_L2w)
         
-    Mconv7_stage2_L1r = (mx.symbol.Reshape(data=Mconv7_stage2_L1, shape=(-1,), name='Mconv7_stage2_L1'))
+    Mconv7_stage2_L1r = mx.symbol.Reshape(data=Mconv7_stage2_L1, shape=(-1,), name='Mconv7_stage2_L1')
     #partaffinityglabelr = mx.symbol.Reshape(data=partaffinityglabel, shape=(-1, ), name='partaffinityglabelr')
-    stage2_loss_L1s = mx.symbol.square(Mconv7_stage2_L1r - (partaffinityglabelr))
+    stage2_loss_L1s = mx.symbol.square(Mconv7_stage2_L1r - partaffinityglabelr)
     #vecweightw = mx.symbol.Reshape(data=vecweight, shape=(-1,), name='Mconv7_stage2_L1r')
     stage2_loss_L1w = stage2_loss_L1s*vecweightw
     stage2_loss_L1  = mx.symbol.MakeLoss(stage2_loss_L1w)
     
-    Mconv7_stage2_L2r = (mx.symbol.Reshape(data=Mconv7_stage2_L2, shape=(-1,), name='Mconv7_stage2_L2'))
+    Mconv7_stage2_L2r = mx.symbol.Reshape(data=Mconv7_stage2_L2, shape=(-1,), name='Mconv7_stage2_L2')
     #heatmaplabelr = mx.symbol.Reshape(data=heatmaplabel, shape=(-1, ), name='heatmaplabelr')
-    stage2_loss_L2s = mx.symbol.square(Mconv7_stage2_L2r-(heatmaplabelr))
+    stage2_loss_L2s = mx.symbol.square(Mconv7_stage2_L2r-heatmaplabelr)
     #heatweightw = mx.symbol.Reshape(data=heatweight, shape=(-1,), name='conv5_5_CPM_L1r')
     stage2_loss_L2w = stage2_loss_L2s*heatweightw
     stage2_loss_L2  = mx.symbol.MakeLoss(stage2_loss_L2w)
     
     
-    Mconv7_stage3_L1r = (mx.symbol.Reshape(data=Mconv7_stage3_L1, shape=(-1,), name='Mconv7_stage3_L1'))
+    Mconv7_stage3_L1r = mx.symbol.Reshape(data=Mconv7_stage3_L1, shape=(-1,), name='Mconv7_stage3_L1')
     #partaffinityglabelr = mx.symbol.Reshape(data=partaffinityglabel, shape=(-1, ), name='partaffinityglabelr')
-    stage3_loss_L1s = mx.symbol.square(Mconv7_stage3_L1r - (partaffinityglabelr))
+    stage3_loss_L1s = mx.symbol.square(Mconv7_stage3_L1r - partaffinityglabelr)
     #vecweightw = mx.symbol.Reshape(data=vecweight, shape=(-1,), name='Mconv7_stage2_L1r')
     stage3_loss_L1w = stage3_loss_L1s*vecweightw
     stage3_loss_L1  = mx.symbol.MakeLoss(stage3_loss_L1w)
     
-    Mconv7_stage3_L2r = (mx.symbol.Reshape(data=Mconv7_stage3_L2, shape=(-1,), name='Mconv7_stage3_L2'))
+    Mconv7_stage3_L2r = mx.symbol.Reshape(data=Mconv7_stage3_L2, shape=(-1,), name='Mconv7_stage3_L2')
     #heatmaplabelr = mx.symbol.Reshape(data=heatmaplabel, shape=(-1, ), name='heatmaplabelr')
-    stage3_loss_L2s = mx.symbol.square(Mconv7_stage3_L2r-(heatmaplabelr))
+    stage3_loss_L2s = mx.symbol.square(Mconv7_stage3_L2r-heatmaplabelr)
     #heatweightw = mx.symbol.Reshape(data=heatweight, shape=(-1,), name='conv5_5_CPM_L1r')
     stage3_loss_L2w = stage3_loss_L2s*heatweightw
     stage3_loss_L2  = mx.symbol.MakeLoss(stage3_loss_L2w)
     
-    Mconv7_stage4_L1r = (mx.symbol.Reshape(data=Mconv7_stage4_L1, shape=(-1,), name='Mconv7_stage4_L1'))
+    Mconv7_stage4_L1r = mx.symbol.Reshape(data=Mconv7_stage4_L1, shape=(-1,), name='Mconv7_stage4_L1')
     #partaffinityglabelr = mx.symbol.Reshape(data=partaffinityglabel, shape=(-1, ), name='partaffinityglabelr')
-    stage4_loss_L1s = mx.symbol.square(Mconv7_stage4_L1r - (partaffinityglabelr))
+    stage4_loss_L1s = mx.symbol.square(Mconv7_stage4_L1r - partaffinityglabelr)
     #vecweightw = mx.symbol.Reshape(data=vecweight, shape=(-1,), name='Mconv7_stage2_L1r')
     stage4_loss_L1w = stage4_loss_L1s*vecweightw
     stage4_loss_L1  = mx.symbol.MakeLoss(stage4_loss_L1w)
     
-    Mconv7_stage4_L2r = (mx.symbol.Reshape(data=Mconv7_stage4_L2, shape=(-1,), name='Mconv7_stage4_L2'))
+    Mconv7_stage4_L2r = mx.symbol.Reshape(data=Mconv7_stage4_L2, shape=(-1,), name='Mconv7_stage4_L2')
     #heatmaplabelr = mx.symbol.Reshape(data=heatmaplabel, shape=(-1, ), name='heatmaplabelr')
-    stage4_loss_L2s = mx.symbol.square(Mconv7_stage4_L2r-(heatmaplabelr))
+    stage4_loss_L2s = mx.symbol.square(Mconv7_stage4_L2r-heatmaplabelr)
     #heatweightw = mx.symbol.Reshape(data=heatweight, shape=(-1,), name='conv5_5_CPM_L1r')
     stage4_loss_L2w = stage4_loss_L2s*heatweightw
     stage4_loss_L2  = mx.symbol.MakeLoss(stage4_loss_L2w)
     
-    Mconv7_stage5_L1r = (mx.symbol.Reshape(data=Mconv7_stage5_L1, shape=(-1,), name='Mconv7_stage5_L1'))
+    Mconv7_stage5_L1r = mx.symbol.Reshape(data=Mconv7_stage5_L1, shape=(-1,), name='Mconv7_stage5_L1')
     #partaffinityglabelr = mx.symbol.Reshape(data=partaffinityglabel, shape=(-1, ), name='partaffinityglabelr')
-    stage5_loss_L1s = mx.symbol.square(Mconv7_stage5_L1r - (partaffinityglabelr))
+    stage5_loss_L1s = mx.symbol.square(Mconv7_stage5_L1r - partaffinityglabelr)
     #vecweightw = mx.symbol.Reshape(data=vecweight, shape=(-1,), name='Mconv7_stage2_L1r')
     stage5_loss_L1w = stage5_loss_L1s*vecweightw
     stage5_loss_L1  = mx.symbol.MakeLoss(stage5_loss_L1w)
     
-    Mconv7_stage5_L2r = (mx.symbol.Reshape(data=Mconv7_stage5_L2, shape=(-1,), name='Mconv7_stage5_L2'))
+    Mconv7_stage5_L2r = mx.symbol.Reshape(data=Mconv7_stage5_L2, shape=(-1,), name='Mconv7_stage5_L2')
     #heatmaplabelr = mx.symbol.Reshape(data=heatmaplabel, shape=(-1, ), name='heatmaplabelr')
-    stage5_loss_L2s = mx.symbol.square(Mconv7_stage5_L2r-(heatmaplabelr))
+    stage5_loss_L2s = mx.symbol.square(Mconv7_stage5_L2r-heatmaplabelr)
     #heatweightw = mx.symbol.Reshape(data=heatweight, shape=(-1,), name='conv5_5_CPM_L1r')
     stage5_loss_L2w = stage5_loss_L2s*heatweightw
     stage5_loss_L2  = mx.symbol.MakeLoss(stage5_loss_L2w)
     
     
-    Mconv7_stage6_L1r = (mx.symbol.Reshape(data=Mconv7_stage6_L1, shape=(-1,), name='Mconv7_stage3_L1'))
+    Mconv7_stage6_L1r = mx.symbol.Reshape(data=Mconv7_stage6_L1, shape=(-1,), name='Mconv7_stage3_L1')
     #partaffinityglabelr = mx.symbol.Reshape(data=partaffinityglabel, shape=(-1, ), name='partaffinityglabelr')
-    stage6_loss_L1s = mx.symbol.square(Mconv7_stage6_L1r - (partaffinityglabelr))
+    stage6_loss_L1s = mx.symbol.square(Mconv7_stage6_L1r - partaffinityglabelr)
     #vecweightw = mx.symbol.Reshape(data=vecweight, shape=(-1,), name='Mconv7_stage2_L1r')
     stage6_loss_L1w = stage6_loss_L1s*vecweightw
     stage6_loss_L1  = mx.symbol.MakeLoss(stage6_loss_L1w)
     
-    Mconv7_stage6_L2r = (mx.symbol.Reshape(data=Mconv7_stage6_L2, shape=(-1,), name='Mconv7_stage3_L2'))
+    Mconv7_stage6_L2r = mx.symbol.Reshape(data=Mconv7_stage6_L2, shape=(-1,), name='Mconv7_stage3_L2')
     #heatmaplabelr = mx.symbol.Reshape(data=heatmaplabel, shape=(-1, ), name='heatmaplabelr')
-    stage6_loss_L2s = mx.symbol.square(Mconv7_stage6_L2r- (heatmaplabelr))
+    stage6_loss_L2s = mx.symbol.square(Mconv7_stage6_L2r-heatmaplabelr)
     #heatweightw = mx.symbol.Reshape(data=heatweight, shape=(-1,), name='conv5_5_CPM_L1r')
     stage6_loss_L2w = stage6_loss_L2s*heatweightw
     stage6_loss_L2  = mx.symbol.MakeLoss(stage6_loss_L2w)
-    
     group = mx.symbol.Group([stage1_loss_L1, stage1_loss_L2,
                              stage2_loss_L1, stage2_loss_L2,
                              stage3_loss_L1, stage3_loss_L2,
@@ -332,11 +358,16 @@ def CPMModel_test(use_resnet = False):
     
     vecweight = mx.sym.Variable('vecweight')
     
-    if use_resnet:
+    def _getResnet(_data):
         sym_resnet = resnet.sym.get_resnet_openpose_sym()
-        relu4_4_CPM = sym_resnet(name = "resnet",data = data)
-    else:
-        conv1_1 = mx.symbol.Convolution(name='conv1_1', data=data , num_filter=64, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+        r_re = sym_resnet(name = "resnet_152",data = _data)
+        conv1_2 = mx.symbol.Convolution(name='resnet_152_conv1', 
+                                        data=r_re , num_filter=128, 
+                                        pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False) 
+        relu1_1 = mx.symbol.Activation(name='resnet_relu1_1', data=conv1_2 , act_type='relu')               
+        return relu1_1
+    def _getVGG19(_data):
+        conv1_1 = mx.symbol.Convolution(name='conv1_1', data=_data , num_filter=64, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
         relu1_1 = mx.symbol.Activation(name='relu1_1', data=conv1_1 , act_type='relu')
         conv1_2 = mx.symbol.Convolution(name='conv1_2', data=relu1_1 , num_filter=64, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
         relu1_2 = mx.symbol.Activation(name='relu1_2', data=conv1_2 , act_type='relu')
@@ -363,9 +394,12 @@ def CPMModel_test(use_resnet = False):
         relu4_3_CPM = mx.symbol.Activation(name='relu4_3_CPM', data=conv4_3_CPM , act_type='relu')
         conv4_4_CPM = mx.symbol.Convolution(name='conv4_4_CPM', data=relu4_3_CPM , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
         relu4_4_CPM = mx.symbol.Activation(name='relu4_4_CPM', data=conv4_4_CPM , act_type='relu')
+        return relu4_4_CPM
 
 
 
+    vgg_resnet_concat = mx.symbol.Concat(name='vgg_resnet_concat', *[_getResnet(_data = data),_getVGG19(_data = data)] )
+    relu4_4_CPM = mx.symbol.Convolution(name='relu4_4_CPM_afer_concat', data=vgg_resnet_concat , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)    
 
     conv5_1_CPM_L1 = mx.symbol.Convolution(name='conv5_1_CPM_L1', data=relu4_4_CPM , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
     relu5_1_CPM_L1 = mx.symbol.Activation(name='relu5_1_CPM_L1', data=conv5_1_CPM_L1 , act_type='relu')
@@ -385,7 +419,29 @@ def CPMModel_test(use_resnet = False):
     relu5_4_CPM_L2 = mx.symbol.Activation(name='relu5_4_CPM_L2', data=conv5_4_CPM_L2 , act_type='relu')
     conv5_5_CPM_L1 = mx.symbol.Convolution(name='conv5_5_CPM_L1', data=relu5_4_CPM_L1 , num_filter=numoflinks*2, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
     conv5_5_CPM_L2 = mx.symbol.Convolution(name='conv5_5_CPM_L2', data=relu5_4_CPM_L2 , num_filter=numofparts, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
+    
+    #############################################################################################
+    # B_conv5_1_CPM_L2 = mx.symbol.Convolution(name='B_conv5_1_CPM_L2', data=relu4_4_CPM , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+    # B_relu5_1_CPM_L2 = mx.symbol.Activation(name='B_relu5_1_CPM_L2', data=B_conv5_1_CPM_L2 , act_type='relu')
+    # B_conv5_2_CPM_L2 = mx.symbol.Convolution(name='B_conv5_2_CPM_L2', data=B_relu5_1_CPM_L2 , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+    # B_relu5_2_CPM_L2 = mx.symbol.Activation(name='B_relu5_2_CPM_L2', data=B_conv5_2_CPM_L2 , act_type='relu')
+    # B_conv5_3_CPM_L2 = mx.symbol.Convolution(name='B_conv5_3_CPM_L2', data=B_relu5_2_CPM_L2 , num_filter=128, pad=(1,1), kernel=(3,3), stride=(1,1), no_bias=False)
+    # B_relu5_3_CPM_L2 = mx.symbol.Activation(name='B_relu5_3_CPM_L2', data=B_conv5_3_CPM_L2 , act_type='relu')
+    # B_conv5_4_CPM_L2 = mx.symbol.Convolution(name='B_conv5_4_CPM_L2', data=B_relu5_3_CPM_L2 , num_filter=512, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
+    # B_relu5_4_CPM_L2 = mx.symbol.Activation(name='B_relu5_4_CPM_L2', data=B_conv5_4_CPM_L2 , act_type='relu')
+    # B_conv5_5_CPM_L2 = mx.symbol.Convolution(name='B_conv5_5_CPM_L2', data=B_relu5_4_CPM_L2 , num_filter=numofparts, pad=(0,0), kernel=(1,1), stride=(1,1), no_bias=False)
+    
+    # B_softmax_sum = mx.sym.exp(conv5_5_CPM_L2) + mx.sym.exp(B_conv5_5_CPM_L2)
+    # conv5_5_CPM_L2 = mx.sym.exp(conv5_5_CPM_L2)/B_softmax_sum
+    # B_conv5_5_CPM_L2 = mx.sym.exp(B_conv5_5_CPM_L2)/B_softmax_sum
+
+    # loss_cross_entropy = heatmaplabel * mx.sym.log(conv5_5_CPM_L2) + (1-heatmaplabel) * mx.sym.log(B_conv5_5_CPM_L2)
+    # loss_cross_entropy = mx.symbol.MakeLoss(-1 * loss_cross_entropy * heatweight)
+    #############################################################################################    
+    
+    
     concat_stage2 = mx.symbol.Concat(name='concat_stage2', *[conv5_5_CPM_L1,conv5_5_CPM_L2,relu4_4_CPM] )
+
     Mconv1_stage2_L1 = mx.symbol.Convolution(name='Mconv1_stage2_L1', data=concat_stage2 , num_filter=128, pad=(3,3), kernel=(7,7), stride=(1,1), no_bias=False)
     Mrelu1_stage2_L1 = mx.symbol.Activation(name='Mrelu1_stage2_L1', data=Mconv1_stage2_L1 , act_type='relu')
     Mconv1_stage2_L2 = mx.symbol.Convolution(name='Mconv1_stage2_L2', data=concat_stage2 , num_filter=128, pad=(3,3), kernel=(7,7), stride=(1,1), no_bias=False)

@@ -11,6 +11,7 @@ from pprint import pprint
 import cv2
 import numpy as np
 import sys,os,pickle
+from random import randint
 part2ours = [9,8,7,10,11,12,-1,14,-1,13,3,2,1,4,5,6]
 img_train_size = 368
 

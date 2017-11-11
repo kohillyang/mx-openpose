@@ -97,6 +97,12 @@ class Ai_data_set(object):
             heatweight = np.repeat(maskscale[np.newaxis, :, :], len(heatmap), axis=0)
             vecweight  = np.repeat(maskscale[np.newaxis, :, :], len(pagmap), axis=0)
             
+            if randint(0,9) <=5:
+                reserve_color = randint(0,2)
+                image[:,:,(0,1,2)] = image[:,:,(reserve_color,reserve_color,reserve_color)]
+            else:
+                color_i,color_j,color_k = randint(0,2),randint(0,2),randint(0,2)
+                image[:,:,(0,1,2)] = image[:,:,(color_i,color_j,color_k)] 
             transposeImage = np.transpose(np.float32(image), (2,0,1))/255 - 0.5
         
             self.cur_batch += 1
