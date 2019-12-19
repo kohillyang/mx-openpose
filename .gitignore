@@ -9,3 +9,5 @@ dataset/*
 screenlog*
 models/*
 .vscode
+
+\.idea/
