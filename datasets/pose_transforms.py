@@ -49,7 +49,7 @@ class GenGauMask(object):
 
 class GenPafMaps(object):
     def __init__(self, paf_connection_first, paf_connection_second):
-        self.distance_threshold = 14
+        self.distance_threshold = 7
         self.paf_connection_first = paf_connection_first  # type: list
         self.paf_connection_second = paf_connection_second  # type: list
         assert len(self.paf_connection_first) == len(self.paf_connection_second)
@@ -125,7 +125,7 @@ class GenBBOXMask(object):
         masks = np.zeros(shape=(h, w), dtype=np.float32)
         for x0, y0, x1, y1 in np.round(bboxes):
             masks[int(y0):int(y1), int(x0):int(x1)] = 1
-        return masks[np.newaxis]
+        return masks
 
 
 class PafHeatMapBaseDataSet(object):
