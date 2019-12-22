@@ -1,15 +1,19 @@
-"""Train SSD"""
 import logging
+import os
+import sys
+import tqdm
+import easydict
 
 import mxnet as mx
-import numpy as np
 import mxnet.autograd as ag
-import mxnet.ndarray as nd
+import numpy as np
 from mxnet import gluon
 
-from dataset import MPIIDataset
+from datasets.cocodatasets import COCOKeyPoints
+from datasets.dataset import PafHeatMapDataSet
+from datasets.pose_transforms import default_train_transform
 from models.drn_gcn import DRN50_GCN
-import sys
+
 sys.path.append("MobulaOP")
 import mobula
 print(mobula.__path__)
@@ -30,23 +34,37 @@ class SigmodCrossEntropyLoss:
 
 
 if __name__ == '__main__':
+    config = easydict.EasyDict()
+    config.TRAIN = easydict.EasyDict()
+    config.TRAIN.save_prefix = "output/gcn/"
+    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "GCN-resnet50-")
+    config.TRAIN.gpus = [7]
+
+    os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     logging.basicConfig(level=logging.INFO)
-    CLASSES = ('dial', 'needle')
-    gpus = [3]
     epoch_count = 100000
-    save_prefix = "output/gcn/"
 
     # fix seed for mxnet, numpy and python builtin random generator.
     mx.random.seed(3)
     np.random.seed(3)
 
-    ctx = [mx.gpu(int(i)) for i in gpus]
+    ctx = [mx.gpu(int(i)) for i in config.TRAIN.gpus]
     ctx = ctx if ctx else [mx.cpu()]
 
-    train_dataset = MPIIDataset()
+    baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
+    train_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
     net = DRN50_GCN(num_classes=train_dataset.number_of_keypoints + 2 * train_dataset.number_of_pafs)
 
-    net.initialize(init=mx.init.Normal())
+    params = net.collect_params()
+    for key in params.keys():
+        if params[key]._data is None:
+            default_init = mx.init.Zero() if "bias" in key or "offset" in key else mx.init.Normal()
+            default_init.set_verbosity(True)
+            if params[key].init is not None and hasattr(params[key].init, "set_verbosity"):
+                params[key].init.set_verbosity(True)
+                params[key].initialize(init=params[key].init, default_init=params[key].init)
+            else:
+                params[key].initialize(default_init=default_init)
     net.collect_params().reset_ctx(ctx)
 
     train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=4)
@@ -60,33 +78,40 @@ if __name__ == '__main__':
 
     metric_loss_heatmaps = mx.metric.Loss("loss_heatmaps")
     metric_loss_pafmaps = mx.metric.Loss("loss_pafmaps")
+    eval_metrics = mx.metric.CompositeEvalMetric()
+    for child_metric in [metric_loss_heatmaps, metric_loss_pafmaps]:
+        eval_metrics.add(child_metric)
     for epoch in range(epoch_count):
         metric_loss_heatmaps.reset()
         metric_loss_pafmaps.reset()
-        for batch_cnt, batch in enumerate(train_loader):
-            # img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks
+        for batch_cnt, batch in enumerate(tqdm.tqdm(train_loader)):
             data_list = gluon.utils.split_and_load(batch[0], ctx_list=ctx, batch_axis=0)
             heatmaps_list = gluon.utils.split_and_load(batch[1], ctx_list=ctx, batch_axis=0)
             heatmaps_masks_list = gluon.utils.split_and_load(batch[2], ctx_list=ctx, batch_axis=0)
             pafmaps_list = gluon.utils.split_and_load(batch[3], ctx_list=ctx, batch_axis=0)
             pafmaps_masks_list = gluon.utils.split_and_load(batch[4], ctx_list=ctx, batch_axis=0)
-            masks_list = gluon.utils.split_and_load(batch[5], ctx_list=ctx, batch_axis=0)
 
             losses = []
             with ag.record():
-                for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks, masks in zip(
-                        data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list,
-                        pafmaps_masks_list, masks_list):
+                for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in zip(data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list, pafmaps_masks_list):
                     number_of_keypoints = heatmaps.shape[1]
                     y_hat = net(data)
                     heatmap_prediction = y_hat[:, :number_of_keypoints]
                     pafmap_prediction = y_hat[:, number_of_keypoints:]
                     pafmap_prediction = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
-                    loss_heatmap = mx.nd.sum(SigmodCrossEntropyLoss(heatmap_prediction, heatmaps) * heatmaps_masks * masks) / mx.nd.sum(heatmaps_masks * masks)
-                    loss_pafmap = mx.nd.sum(((pafmap_prediction - pafmaps) ** 2) * pafmaps_masks * masks) / mx.nd.sum(pafmaps_masks * masks)
+                    loss_heatmap = mx.nd.sum(SigmodCrossEntropyLoss(heatmap_prediction, heatmaps) * heatmaps_masks) / (mx.nd.sum(heatmaps_masks) + 0.001)
+                    loss_pafmap = mx.nd.sum(((pafmap_prediction - pafmaps) ** 2) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 0.001)
                     losses.append(loss_heatmap)
                     losses.append(loss_pafmap)
                     metric_loss_heatmaps.update(None, loss_heatmap)
-                    metric_loss_heatmaps.update(None, loss_pafmap)
+                    metric_loss_pafmaps.update(None, loss_pafmap)
             ag.backward(losses)
-            trainer.step(1, ignore_stale_grad=True)
+            trainer.step(1, ignore_stale_grad=False)
+
+            save_path = "{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, 0.0)
+            net.collect_params().save(save_path)
+            trainer.save_states(config.TRAIN.model_prefix + "-trainer.states")
+
+            msg = ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
+            msg += ",lr={}".format(trainer.learning_rate)
+            logging.info(msg)

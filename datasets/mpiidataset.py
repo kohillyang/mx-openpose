@@ -1,19 +1,25 @@
-from pose_transforms import PafHeatMapBaseDataSet, default_train_transform
+from .pose_transforms import PafHeatMapBaseDataSet, default_train_transform
 import numpy as np
 import scipy.io as sio
 import os
 import cv2
 import logging
 
-
-class MPIIDataset(PafHeatMapBaseDataSet):
+class MPIIDataset(object):
     def __init__(self, mat_path="/data3/zyx/yks/dataset/mpii/mpii_human_pose_v1_u12_2/mpii_human_pose_v1_u12_1.mat",
                  image_root="/data3/zyx/yks/dataset/mpii/images",
                  transforms=default_train_transform, debug=False):
+        """
+        :param mat_path:
+        :param image_root:
+        :param transforms:
+        :param debug:
+        Some persons on images are not labeled, you need to generate extra masks for them.
+        """
         mid_1 = [0, 1, 2, 5, 4, 3, 10, 11, 8, 15, 14, 12, 13, 2, 3, 2, 3]
         mid_2 = [1, 2, 11, 4, 3, 13, 11, 12, 9, 14, 13, 13, 12, 3, 2, 13, 12]
 
-        super(MPIIDataset, self).__init__(mid_1, mid_2)
+        super(MPIIDataset, self).__init__()
         self._transforms = transforms
         self._mat_path = mat_path
         self._debug = debug
@@ -42,14 +48,10 @@ class MPIIDataset(PafHeatMapBaseDataSet):
         for keyps in keypoints:
             bboxes.append([np.min(keyps[:, 0]), np.min(keyps[:, 1]), np.max(keyps[:, 0]), np.max(keyps[:, 1])])
         bboxes = np.array(bboxes).astype(np.float32)
-        ori_image = cv2.imread(image_path)[:, :, ::-1]
-        if self._transforms is not None:
-            ori_image, bboxes, keypoints, availability = self._transforms(ori_image, bboxes, keypoints, availability)
-        masks = self.masks_generator(ori_image, bboxes, keypoints, availability)
-        return self.generate_pafmap_heatmap(ori_image, bboxes, keypoints, availability) + (masks,)
+        joints = np.concatenate([keypoints, availability[:, :, np.newaxis]], axis=2)
+        # return as image_path, bboxes, joints, image_id
+        return image_path, bboxes, joints, item
 
-    def __len__(self):
-        return len(self.objs)
 
     def parse_mpii_mat(self, mat_path, images_path):
         import scipy.io as sio
@@ -116,38 +118,5 @@ class MPIIDataset(PafHeatMapBaseDataSet):
                 all_img.append(one_img)
         return all_img
 
-    def viz(self, image, heatmaps, pafmaps, masks):
-        image = image.astype(np.uint8)
-        import matplotlib.pyplot as plt
-        fig0, axes = plt.subplots(int((heatmaps.shape[0]) / 4) + 1, 4, squeeze=False)
-        for i in range(len(axes)):
-            for j in range(len(axes[0])):
-                n = i * len(axes[0]) + j
-                if n < heatmaps.shape[0]:
-                    image_can = image.copy()
-                    image_can[:, :, 2] = heatmaps[n] * 255
-                    axes[i, j].imshow(image_can)
-        axes[-1, -1].imshow(image)
-        paf_x, paf_y = pafmaps
-        fig1, axes = plt.subplots(int((paf_x.shape[0]) / 4) + 1, 4, squeeze=False)
-        for i in range(len(axes)):
-            for j in range(len(axes[0])):
-                n = i * len(axes[0]) + j
-                if n < paf_x.shape[0]:
-                    paf_norm = np.sqrt(paf_x[n] ** 2 + paf_y[n] ** 2)
-                    image_can = image.copy()
-                    image_can[:, :, 2] = paf_norm * 255
-                    axes[i, j].imshow(image_can)
-        axes[-1, -2].imshow(masks.squeeze())
-        axes[-1, -1].imshow(image)
-        plt.show()
 
 
-if __name__ == '__main__':
-    dataset = MPIIDataset()
-    x= dataset[0]
-    for xx in x:
-        print(xx.shape)
-        print(xx.dtype)
-    for img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks, masks in dataset:
-        dataset.viz(img, heatmaps, pafmaps, masks)
