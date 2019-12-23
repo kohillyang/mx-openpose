@@ -8,7 +8,7 @@ import mxnet as mx
 import mxnet.autograd as ag
 import numpy as np
 from mxnet import gluon
-import os, cv2
+import os, cv2, math
 
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
@@ -16,7 +16,7 @@ from datasets.pose_transforms import default_train_transform, ImagePad
 from models.drn_gcn import DRN50_GCN
 
 
-def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
+def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
     '''
     0：头顶
     1：脖子
@@ -24,7 +24,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
     3：右肘
     4：右腕
     '''
-
+    # print(heatmap_avg.shape, paf_avg.shape, limbSeq)
     param = {}
 
     param['thre1'] = 0.2
@@ -37,8 +37,8 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
     from scipy.ndimage.filters import gaussian_filter
     all_peaks = []
     peak_counter = 0
-
-    for part in range(15 - 1):
+    numofparts = heatmap_avg.shape[2]
+    for part in range(numofparts):
         x_list = []
         y_list = []
         map_ori = heatmap_avg[:, :, part]
@@ -55,7 +55,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
 
         peaks_binary = np.logical_and.reduce(
             (map >= map_left, map >= map_right, map >= map_up, map >= map_down, map > param['thre1']))
-        peaks = zip(np.nonzero(peaks_binary)[1], np.nonzero(peaks_binary)[0])  # note reverse
+        peaks = list(zip(np.nonzero(peaks_binary)[1], np.nonzero(peaks_binary)[0]))  # note reverse
         peaks_with_score = [x + (map_ori[x[1], x[0]],) for x in peaks]
         id = range(peak_counter, peak_counter + len(peaks))
         peaks_with_score_and_id = [peaks_with_score[i] + (id[i],) for i in range(len(id))]
@@ -63,10 +63,11 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
         all_peaks.append(peaks_with_score_and_id)
         peak_counter += len(peaks)
     # find connection in the specified sequence, center 29 is in the position 15
-    limbSeq = [[13, 14], [14, 1], [14, 4], [1, 2], [2, 3], [4, 5], [5, 6], [1, 7], [7, 8],
-               [8, 9], [4, 10], [10, 11], [11, 12]]
+    # limbSeq = [[13, 14], [14, 1], [14, 4], [1, 2], [2, 3], [4, 5], [5, 6], [1, 7], [7, 8],
+    #            [8, 9], [4, 10], [10, 11], [11, 12]]
+    numoflinks = len(limbSeq)
     # the middle joints heatmap correpondence
-    mapIdx = [(i * 2, i * 2 + 1) for i in range(numoflinks)]
+    mapIdx = [(i, numoflinks +i) for i in range(numoflinks)]
     assert (len(limbSeq) == numoflinks)
 
     connection_all = []
@@ -77,8 +78,9 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
     #     pydevd.settrace("127.0.0.1", True, True, 5678, True)
     for k in range(len(mapIdx)):
         score_mid = paf_avg[:, :, [x for x in mapIdx[k]]]
-        candA = all_peaks[limbSeq[k][0] - 1]
-        candB = all_peaks[limbSeq[k][1] - 1]
+        print(limbSeq[k], all_peaks)
+        candA = all_peaks[limbSeq[k][0] ]
+        candB = all_peaks[limbSeq[k][1] ]
         # print(k)
         # print(candA)
         # print('---------')
@@ -96,24 +98,22 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
                     # print('norm: ', norm)
                     vec = np.divide(vec, norm)
                     # print('normalized vec: ', vec)
-                    startend = zip(np.linspace(candA[i][0], candB[j][0], num=mid_num), \
-                                   np.linspace(candA[i][1], candB[j][1], num=mid_num))
+                    startend = list(zip(np.linspace(candA[i][0], candB[j][0], num=mid_num), np.linspace(candA[i][1], candB[j][1], num=mid_num)))
                     # print('startend: ', startend)
                     vec_x = np.array([score_mid[int(round(startend[I][1])), int(round(startend[I][0])), 0] \
                                       for I in range(len(startend))])
                     # print('vec_x: ', vec_x)
                     vec_y = np.array([score_mid[int(round(startend[I][1])), int(round(startend[I][0])), 1] \
                                       for I in range(len(startend))])
-                    # print('vec_y: ', vec_y)
+                    print('vec_y: ', vec_y)
                     score_midpts = np.multiply(vec_x, vec[0]) + np.multiply(vec_y, vec[1])
-                    # print(score_midpts)
-                    # print('score_midpts: ', score_midpts)
+                    print('score_midpts: ', score_midpts)
                     try:
                         score_with_dist_prior = sum(score_midpts) / len(score_midpts) + min(
                             0.5 * oriImg.shape[0] / norm - 1, 0)
                     except ZeroDivisionError:
                         score_with_dist_prior = -1
-                        ##print('score_with_dist_prior: ', score_with_dist_prior)
+                    print('score_with_dist_prior: ', score_with_dist_prior, file=sys.stderr)
                     criterion1 = len(np.nonzero(score_midpts > param['thre2'])[0]) > 0.8 * len(score_midpts)
                     # print('score_midpts > param["thre2"]: ', len(np.nonzero(score_midpts > param['thre2'])[0]))
                     criterion2 = score_with_dist_prior > 0
@@ -155,14 +155,16 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
             try:
                 partAs = connection_all[k][:, 0]
                 partBs = connection_all[k][:, 1]
-                indexA, indexB = np.array(limbSeq[k]) - 1
+                indexA, indexB = np.array(limbSeq[k])
             except IndexError as e:
                 row = -1 * np.ones(20)
                 subset = np.vstack([subset, row])
+                raise e
                 continue
             except TypeError as e:
                 row = -1 * np.ones(20)
                 subset = np.vstack([subset, row])
+                raise e
                 continue
             for i in range(len(connection_all[k])):  # = 1:size(temp,1)
                 found = 0
@@ -180,8 +182,6 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
                         subset[j][-2] += candidate[partBs[i].astype(int), 2] + connection_all[k][i][2]
                 elif found == 2:  # if found 2 and disjoint, merge them
                     j1, j2 = subset_idx
-                    print
-                    "found = 2"
                     membership = ((subset[j1] >= 0).astype(int) + (subset[j2] >= 0).astype(int))[:-2]
                     if len(np.nonzero(membership == 2)[0]) == 0:  # merge
                         subset[j1][:-2] += (subset[j2][:-2] + 1)
@@ -216,35 +216,35 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
               [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255], [0, 85, 255], [0, 0, 255], [85, 0, 255], \
               [170, 0, 255], [255, 0, 255], [255, 0, 170], [255, 0, 85]]
 
-    # cmap = matplotlib.cm.get_cmap('hsv')
+    import cv2 as cv
+    import matplotlib
+    cmap = matplotlib.cm.get_cmap('hsv')
+    canvas = image_padded.copy()
+    for i in range(numofparts):
+        rgba = np.array(cmap(1 - i/18. - 1./36))
+        rgba[0:3] *= 255
+        for j in range(len(all_peaks[i])):
+            cv.circle(canvas, all_peaks[i][j][0:2], 4, rgba, thickness=-1)
 
-    # canvas = cv.imread(test_image) # B,G,R order
-    # print len(all_peaks)
-    # for i in range(15):
-    #     rgba = np.array(cmap(1 - i/18. - 1./36))
-    #     rgba[0:3] *= 255
-    #     for j in range(len(all_peaks[i])):
-    #         cv.circle(canvas, all_peaks[i][1][0:2], 4, colors[i], thickness=-1)
-
-    # to_plot = cv.addWeighted(oriImg, 0.3, canvas, 0.7, 0)
-    # plt.imshow(to_plot[:,:,[2,1,0]])
-    # fig = matplotlib.pyplot.gcf()
-    # fig.set_size_inches(11, 11)
+    to_plot = cv.addWeighted(oriImg, 0.3, canvas, 0.7, 0)
+    plt.imshow(to_plot.astype(np.uint8))
+    plt.show()
+    fig = matplotlib.pyplot.gcf()
+    fig.set_size_inches(11, 11)
     # # visualize 2
-    canvas = oriImg
-    img_ori = canvas.copy()
+    canvas = oriImg.copy()
 
     for n in range(len(subset)):
         for i in range(numofparts - 1):
             index_head = subset[n][i]
-            # if -1 in index_head:
-            #     continue
+            if index_head < 0:
+                continue
             x = int(candidate[index_head.astype(int), 0])
             y = int(candidate[index_head.astype(int), 1])
             coo = (x, y)
-            cv2.circle(img_ori, coo, 3, colors[n], thickness=3, )
-    img_ori = img_ori[:, :, (2, 1, 0)]
-    plt.imshow(img_ori)
+            cv2.circle(canvas, coo, 2, colors[n], thickness=-1, )
+    to_plot = cv.addWeighted(oriImg, 0.5, canvas, 0.5, 0)
+    plt.imshow(to_plot.astype(np.uint8))
     plt.show()
 
 
@@ -263,31 +263,39 @@ if __name__ == '__main__':
     net = DRN50_GCN(num_classes=train_dataset.number_of_keypoints + 2 * train_dataset.number_of_pafs)
     net.collect_params().load("output/gcn/GCN-resnet50--2-0.0.params")
 
-    image_path = os.path.join("figures", "test2.jpg")
-    data = cv2.imread(image_path)[:, :, ::-1]
-    data = pad_image(data)
-    data = data[np.newaxis]
-    data = mx.nd.array(data)
-    # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
+    # Single image demo
+    # image_path = os.path.join("figures", "test2.jpg")
+    # data = cv2.imread(image_path)[:, :, ::-1]
+    # image_padded = pad_image(data)
+    # data = image_padded[np.newaxis]
+    # data = mx.nd.array(data).astype(np.float32)
+    # # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
     # y_hat = net(data)
     # heatmap_prediction = y_hat[:, :number_of_keypoints]
     # pafmap_prediction = y_hat[:, number_of_keypoints:]
     # heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
-    # pafmap_prediction = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
+    # pafmap_prediction_reshaped = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
+    # parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
+    #               pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), train_dataset.baseDataSet.skeleton)
     # plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
     # plt.figure()
-    # plt.imshow(pafmap_prediction[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2 )
+    # plt.imshow(pafmap_prediction_reshaped[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2 )
     # plt.show()
 
     for da in train_dataset:
-        data = da[0][np.newaxis]
-        data = mx.nd.array(data)
+        image_padded = pad_image(da[0])
+        data = image_padded[np.newaxis]
+        data = mx.nd.array(data).astype(np.float32)
+        # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
         y_hat = net(data)
         heatmap_prediction = y_hat[:, :number_of_keypoints]
         pafmap_prediction = y_hat[:, number_of_keypoints:]
-        pafmap_prediction = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
         heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
+        pafmap_prediction_reshaped = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2],
+                                                               pafmap_prediction.shape[3])
+        parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
+                      pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), train_dataset.baseDataSet.skeleton)
         plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
         plt.figure()
-        plt.imshow(pafmap_prediction[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2)
+        plt.imshow(pafmap_prediction_reshaped[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2)
         plt.show()

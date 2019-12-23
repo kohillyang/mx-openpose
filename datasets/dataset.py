@@ -45,7 +45,8 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         path, bboxes, joints, image_id = self.baseDataSet[item]
         image = cv2.imread(path)[:, :, ::-1]
         keypoints = joints[:, :, :2]
-        availability = joints[:, :, 2]
+        availability = np.logical_and(joints[:, :, 0] > 0, joints[:, :, 1] > 0)
+        availability = availability.astype(np.float32)
         if self.transforms is not None:
             image, bboxes, keypoints, availability = self.transforms(image, bboxes, keypoints, availability)
         img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks = self.generate_pafmap_heatmap(image, bboxes, keypoints,
