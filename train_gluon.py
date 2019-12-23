@@ -38,7 +38,7 @@ if __name__ == '__main__':
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/gcn/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "GCN-resnet50-")
-    config.TRAIN.gpus = [7]
+    config.TRAIN.gpus = [6, 7]
 
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     logging.basicConfig(level=logging.INFO)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
                 params[key].initialize(default_init=default_init)
     net.collect_params().reset_ctx(ctx)
 
-    train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=4)
+    train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
     trainer = gluon.Trainer(
         net.collect_params(),
         'adam',
@@ -103,15 +103,16 @@ if __name__ == '__main__':
                     loss_pafmap = mx.nd.sum(((pafmap_prediction - pafmaps) ** 2) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 0.001)
                     losses.append(loss_heatmap)
                     losses.append(loss_pafmap)
-                    metric_loss_heatmaps.update(None, loss_heatmap)
-                    metric_loss_pafmaps.update(None, loss_pafmap)
             ag.backward(losses)
             trainer.step(1, ignore_stale_grad=False)
 
-            save_path = "{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, 0.0)
-            net.collect_params().save(save_path)
-            trainer.save_states(config.TRAIN.model_prefix + "-trainer.states")
-
+            metric_loss_heatmaps.update(None, loss_heatmap)
+            metric_loss_pafmaps.update(None, loss_pafmap)
             msg = ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
             msg += ",lr={}".format(trainer.learning_rate)
             logging.info(msg)
+
+        save_path = "{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, 0.0)
+        net.collect_params().save(save_path)
+        trainer.save_states(config.TRAIN.model_prefix + "-trainer.states")
+

@@ -8,11 +8,11 @@ import mxnet as mx
 import mxnet.autograd as ag
 import numpy as np
 from mxnet import gluon
-import os
+import os, cv2
 
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
-from datasets.pose_transforms import default_train_transform
+from datasets.pose_transforms import default_train_transform, ImagePad
 from models.drn_gcn import DRN50_GCN
 
 
@@ -248,21 +248,36 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg):
     plt.show()
 
 
+def pad_image(img_ori, dshape=(368, 368)):
+    fscale = min(dshape[0] / img_ori.shape[0], dshape[1] / img_ori.shape[1])
+    img_resized = cv2.resize(img_ori, dsize=(0, 0), fx=fscale, fy=fscale)
+    img_padded = np.zeros(shape=(int(dshape[0]), int(dshape[1]), 3), dtype=np.float32)
+    img_padded[:img_resized.shape[0], :img_resized.shape[1], :img_resized.shape[2]] = img_resized
+    return img_padded
+
+
 if __name__ == '__main__':
     baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
     number_of_keypoints = train_dataset.number_of_keypoints
     net = DRN50_GCN(num_classes=train_dataset.number_of_keypoints + 2 * train_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50--1-0.0.params")
-    # for image_name in os.listdir("figures"):
-    #     image_path = os.path.join("figures", image_name)
-    #     data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
-    #     y_hat = net(data)
-    #     heatmap_prediction = y_hat[:, :number_of_keypoints]
-    #     pafmap_prediction = y_hat[:, number_of_keypoints:]
-    #     heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
-    #     plt.imshow(pafmap_prediction[0].max(axis=0).asnumpy())
-    #     plt.show()
+    net.collect_params().load("output/gcn/GCN-resnet50--2-0.0.params")
+
+    image_path = os.path.join("figures", "test2.jpg")
+    data = cv2.imread(image_path)[:, :, ::-1]
+    data = pad_image(data)
+    data = data[np.newaxis]
+    data = mx.nd.array(data)
+    # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
+    # y_hat = net(data)
+    # heatmap_prediction = y_hat[:, :number_of_keypoints]
+    # pafmap_prediction = y_hat[:, number_of_keypoints:]
+    # heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
+    # pafmap_prediction = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
+    # plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
+    # plt.figure()
+    # plt.imshow(pafmap_prediction[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2 )
+    # plt.show()
 
     for da in train_dataset:
         data = da[0][np.newaxis]
@@ -274,5 +289,5 @@ if __name__ == '__main__':
         heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
         plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
         plt.figure()
-        plt.imshow(pafmap_prediction[0, 0].max(axis=0).asnumpy())
+        plt.imshow(pafmap_prediction[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2)
         plt.show()
