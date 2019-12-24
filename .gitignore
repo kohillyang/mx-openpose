@@ -12,3 +12,4 @@ models/*
 
 \.idea/
 output/*
+evaluationResult\.json

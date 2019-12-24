@@ -9,14 +9,16 @@ import mxnet.autograd as ag
 import numpy as np
 from mxnet import gluon
 import os, cv2, math
+import json
 
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
 from datasets.pose_transforms import default_train_transform, ImagePad
 from models.drn_gcn import DRN50_GCN
+from pycocotools.cocoeval import COCOeval
+from pycocotools.coco import COCO
 
-
-def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
+def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq, image_id=0, category_id=1, fscale=1.0):
     '''
     0：头顶
     1：脖子
@@ -78,7 +80,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
     #     pydevd.settrace("127.0.0.1", True, True, 5678, True)
     for k in range(len(mapIdx)):
         score_mid = paf_avg[:, :, [x for x in mapIdx[k]]]
-        print(limbSeq[k], all_peaks)
+        # print(limbSeq[k], all_peaks)
         candA = all_peaks[limbSeq[k][0] ]
         candB = all_peaks[limbSeq[k][1] ]
         # print(k)
@@ -105,15 +107,15 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
                     # print('vec_x: ', vec_x)
                     vec_y = np.array([score_mid[int(round(startend[I][1])), int(round(startend[I][0])), 1] \
                                       for I in range(len(startend))])
-                    print('vec_y: ', vec_y)
+                    # print('vec_y: ', vec_y)
                     score_midpts = np.multiply(vec_x, vec[0]) + np.multiply(vec_y, vec[1])
-                    print('score_midpts: ', score_midpts)
+                    # print('score_midpts: ', score_midpts)
                     try:
                         score_with_dist_prior = sum(score_midpts) / len(score_midpts) + min(
                             0.5 * oriImg.shape[0] / norm - 1, 0)
                     except ZeroDivisionError:
                         score_with_dist_prior = -1
-                    print('score_with_dist_prior: ', k, score_with_dist_prior, file=sys.stderr)
+                    # print('score_with_dist_prior: ', k, score_with_dist_prior, file=sys.stderr)
                     criterion1 = len(np.nonzero(score_midpts > param['thre2'])[0]) > 0.8 * len(score_midpts)
                     # print('score_midpts > param["thre2"]: ', len(np.nonzero(score_midpts > param['thre2'])[0]))
                     criterion2 = score_with_dist_prior > 0
@@ -143,12 +145,10 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
                     # assert False
 
             connection_all.append(connection)
-        elif (nA != 0 or nB != 0):
+        # elif (nA != 0 or nB != 0):
+        else:
             special_k.append(k)
             special_non_zero_index.append(indexA if nA != 0 else indexB)
-            connection_all.append([])
-        else:
-            # assert False
             connection_all.append([])
     # last number in each row is the total parts number of that person
     # the second last number in each row is the score of the overall configuration
@@ -169,8 +169,9 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
                 subset_idx = [-1, -1]
                 for j in range(len(subset)):  # 1:size(subset,1):
                     if subset[j][indexA] == partAs[i] or subset[j][indexB] == partBs[i]:
-                        subset_idx[found] = j
-                        found += 1
+                        if found < len(subset_idx):     # Todo: May be a bug here
+                            subset_idx[found] = j
+                            found += 1
 
                 if found == 1:
                     j = subset_idx[0]
@@ -210,43 +211,23 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
             deleteIdx.append(i)
     subset = np.delete(subset, deleteIdx, axis=0)
 
-    ## Show human part keypoint
-
-    # visualize
-    colors = [[255, 0, 0], [255, 85, 0], [255, 170, 0], [255, 255, 0], [170, 255, 0], [85, 255, 0], [0, 255, 0], \
-              [0, 255, 85], [0, 255, 170], [0, 255, 255], [0, 170, 255], [0, 85, 255], [0, 0, 255], [85, 0, 255], \
-              [170, 0, 255], [255, 0, 255], [255, 0, 170], [255, 0, 85]]
-
-    import cv2 as cv
-    import matplotlib
-    cmap = matplotlib.cm.get_cmap('hsv')
-    canvas = image_padded.copy()
-    for i in range(numofparts):
-        rgba = np.array(cmap(1 - i/18. - 1./36))
-        rgba[0:3] *= 255
-        for j in range(len(all_peaks[i])):
-            cv.circle(canvas, all_peaks[i][j][0:2], 4, rgba, thickness=-1)
-
-    to_plot = cv.addWeighted(oriImg, 0.3, canvas, 0.7, 0)
-    plt.imshow(to_plot.astype(np.uint8))
-    plt.show()
-    fig = matplotlib.pyplot.gcf()
-    fig.set_size_inches(11, 11)
-    # # visualize 2
-    canvas = oriImg.copy()
-
+    r = []
     for n in range(len(subset)):
+        keypoints = np.ones(shape=(numofparts * 3, )) * -1
         for i in range(numofparts):
             index_head = subset[n][i]
             if index_head < 0:
                 continue
-            x = int(candidate[index_head.astype(int), 0])
-            y = int(candidate[index_head.astype(int), 1])
-            coo = (x, y)
-            cv2.circle(canvas, coo, 2, colors[n], thickness=-1, )
-    to_plot = cv.addWeighted(oriImg, 0.2, canvas, 0.8, 0)
-    plt.imshow(to_plot.astype(np.uint8))
-    plt.show()
+            x = float(candidate[index_head.astype(int), 0])
+            y = float(candidate[index_head.astype(int), 1])
+            keypoints[i * 3:(i+1) * 3] = x/fscale, y/fscale, 1
+        keypoints_list = keypoints.tolist()
+        current_dict = {'image_id': image_id,
+                        'category_id': category_id,
+                        'keypoints': keypoints_list,
+                        'score': subset[n][-2]}
+        r.append(current_dict)
+    return r
 
 
 def pad_image(img_ori, dshape=(368, 368)):
@@ -254,40 +235,27 @@ def pad_image(img_ori, dshape=(368, 368)):
     img_resized = cv2.resize(img_ori, dsize=(0, 0), fx=fscale, fy=fscale)
     img_padded = np.zeros(shape=(int(dshape[0]), int(dshape[1]), 3), dtype=np.float32)
     img_padded[:img_resized.shape[0], :img_resized.shape[1], :img_resized.shape[2]] = img_resized
-    return img_padded
+    return img_padded, fscale
 
 
 if __name__ == '__main__':
-
+    ctx_list = [mx.gpu(8)]
     baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
-    train_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
-    number_of_keypoints = train_dataset.number_of_keypoints
-    net = DRN50_GCN(num_classes=train_dataset.number_of_keypoints + 2 * train_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50--2-0.0_bk.params")
-
-    # Single image demo
-    # image_path = os.path.join("figures", "test2.jpg")
-    # data = cv2.imread(image_path)[:, :, ::-1]
-    # image_padded = pad_image(data)
-    # data = image_padded[np.newaxis]
-    # data = mx.nd.array(data).astype(np.float32)
-    # # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
-    # y_hat = net(data)
-    # heatmap_prediction = y_hat[:, :number_of_keypoints]
-    # pafmap_prediction = y_hat[:, number_of_keypoints:]
-    # heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
-    # pafmap_prediction_reshaped = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
-    # parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
-    #               pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), train_dataset.baseDataSet.skeleton)
-    # plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
-    # plt.figure()
-    # plt.imshow(pafmap_prediction_reshaped[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2 )
-    # plt.show()
-
-    for da in train_dataset:
-        image_padded = pad_image(da[0])
+    val_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
+    number_of_keypoints = val_dataset.number_of_keypoints
+    net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
+    net.collect_params().load("output/gcn/GCN-resnet50--4-0.0.params")
+    net.collect_params().reset_ctx(ctx_list)
+    results = []
+    image_ids = []
+    for i in tqdm.tqdm(range(min(len(val_dataset), 50))):
+        da = val_dataset[i]
+        image_id = val_dataset.baseDataSet[i][3]
+        image_path = val_dataset.baseDataSet[i][0]
+        image_ids.append(image_id)
+        image_padded, fscale = pad_image(cv2.imread(image_path)[:, :, ::-1])
         # data = image_padded[np.newaxis]
-        # data = mx.nd.array(data).astype(np.float32)
+        # data = mx.nd.array(data).astype(np.float32).as_in_context(ctx_list[0])
         # # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
         # y_hat = net(data)
         # heatmap_prediction = y_hat[:, :number_of_keypoints]
@@ -295,19 +263,35 @@ if __name__ == '__main__':
         # heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
         # pafmap_prediction_reshaped = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2],
         #                                                        pafmap_prediction.shape[3])
-        # parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
-        #               pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), train_dataset.baseDataSet.skeleton)
-
+        # r = parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
+        #                   pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), val_dataset.baseDataSet.skeleton,
+        #                   image_id=image_id, fscale=fscale)
         heatmaps_gt = da[1]
         pafmaps_gt = da[3]
-        # parse_heatpaf(image_padded,
-        #               heatmaps_gt.transpose((1, 2, 0)),
-        #               pafmaps_gt.reshape((-1, pafmaps_gt.shape[2], pafmaps_gt.shape[3])).transpose((1, 2, 0)),
-        #               train_dataset.baseDataSet.skeleton)
+        r = parse_heatpaf(image_padded,
+                      heatmaps_gt.transpose((1, 2, 0)),
+                      pafmaps_gt.reshape((-1, pafmaps_gt.shape[2], pafmaps_gt.shape[3])).transpose((1, 2, 0)),
+                      val_dataset.baseDataSet.skeleton, image_id=image_id, fscale=fscale)
+        results.extend(r)
 
-        # plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
-        # plt.figure()
-        for i in range(pafmaps_gt.shape[1]):
-            plt.imshow(pafmaps_gt[0, i]  + 0 * pafmaps_gt[1, i] ** 2)
-            plt.savefig("output/{}.png".format(i))
-            plt.show()
+    annType = ['segm','bbox','keypoints']
+    annType = annType[2]      #specify type here
+    prefix = 'person_keypoints' if annType=='keypoints' else 'instances'
+    annFile = '/data3/zyx/yks/dataset/coco2017/annotations/person_keypoints_val2017.json'
+    cocoGt = COCO(annFile)
+    cats = cocoGt.loadCats(cocoGt.getCatIds())
+    catIds = cocoGt.getCatIds(catNms=['person'])
+    imgIds = cocoGt.getImgIds(catIds=catIds)
+
+    with open('evaluationResult.json', 'w') as outfile:
+        json.dump(results, outfile)
+    resJsonFile = 'evaluationResult.json'
+    cocoDt2 = cocoGt.loadRes(resJsonFile)
+
+    # running evaluation
+    cocoEval = COCOeval(cocoGt, cocoDt2, annType)
+    cocoEval.params.imgIds  = image_ids
+    cocoEval.evaluate()
+    cocoEval.accumulate()
+    k = cocoEval.summarize()
+    print(k)
