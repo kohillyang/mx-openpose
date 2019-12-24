@@ -29,7 +29,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
 
     param['thre1'] = 0.2
     param['thre2'] = 0.1
-    param['mid_num'] = 7
+    param['mid_num'] = 14
 
     import scipy
 
@@ -42,8 +42,8 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
         x_list = []
         y_list = []
         map_ori = heatmap_avg[:, :, part]
-        map = gaussian_filter(map_ori, sigma=3)
-        # map = map_ori
+        # map = gaussian_filter(map_ori, sigma=3)
+        map = map_ori
         map_left = np.zeros(map.shape)
         map_left[1:, :] = map[:-1, :]
         map_right = np.zeros(map.shape)
@@ -113,7 +113,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
                             0.5 * oriImg.shape[0] / norm - 1, 0)
                     except ZeroDivisionError:
                         score_with_dist_prior = -1
-                    print('score_with_dist_prior: ', score_with_dist_prior, file=sys.stderr)
+                    print('score_with_dist_prior: ', k, score_with_dist_prior, file=sys.stderr)
                     criterion1 = len(np.nonzero(score_midpts > param['thre2'])[0]) > 0.8 * len(score_midpts)
                     # print('score_midpts > param["thre2"]: ', len(np.nonzero(score_midpts > param['thre2'])[0]))
                     criterion2 = score_with_dist_prior > 0
@@ -138,34 +138,32 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
                     # print('-------------------------------')
                     if (len(connection) >= min(nA, nB)):
                         break
+                else:
+                    pass
+                    # assert False
 
             connection_all.append(connection)
         elif (nA != 0 or nB != 0):
             special_k.append(k)
             special_non_zero_index.append(indexA if nA != 0 else indexB)
             connection_all.append([])
+        else:
+            # assert False
+            connection_all.append([])
     # last number in each row is the total parts number of that person
     # the second last number in each row is the score of the overall configuration
-    subset = -1 * np.ones((0, 20))
+    subset_length = numofparts + 2
+    subset = -1 * np.ones((0, subset_length))
 
     candidate = np.array([item for sublist in all_peaks for item in sublist])
 
     for k in range(len(mapIdx)):
         if k not in special_k:
-            try:
-                partAs = connection_all[k][:, 0]
-                partBs = connection_all[k][:, 1]
-                indexA, indexB = np.array(limbSeq[k])
-            except IndexError as e:
-                row = -1 * np.ones(20)
-                subset = np.vstack([subset, row])
-                raise e
+            if connection_all[k].__len__() < 1:
                 continue
-            except TypeError as e:
-                row = -1 * np.ones(20)
-                subset = np.vstack([subset, row])
-                raise e
-                continue
+            partAs = connection_all[k][:, 0]
+            partBs = connection_all[k][:, 1]
+            indexA, indexB = np.array(limbSeq[k])
             for i in range(len(connection_all[k])):  # = 1:size(temp,1)
                 found = 0
                 subset_idx = [-1, -1]
@@ -176,10 +174,12 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
 
                 if found == 1:
                     j = subset_idx[0]
-                    if (subset[j][indexB] != partBs[i]):
-                        subset[j][indexB] = partBs[i]
-                        subset[j][-1] += 1
-                        subset[j][-2] += candidate[partBs[i].astype(int), 2] + connection_all[k][i][2]
+                    # if (subset[j][indexB] != partBs[i]):
+                    subset[j][indexB] = partBs[i]
+                    subset[j][indexA] = partAs[i]
+
+                    subset[j][-1] += 1
+                    subset[j][-2] += candidate[partBs[i].astype(int), 2] + connection_all[k][i][2]
                 elif found == 2:  # if found 2 and disjoint, merge them
                     j1, j2 = subset_idx
                     membership = ((subset[j1] >= 0).astype(int) + (subset[j2] >= 0).astype(int))[:-2]
@@ -194,11 +194,12 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
                         subset[j1][-2] += candidate[partBs[i].astype(int), 2] + connection_all[k][i][2]
 
                 # if find no partA in the subset, create a new subset
-                elif not found and k < 17:
-                    row = -1 * np.ones(20)
+                # Create a new person
+                elif not found:
+                    row = -1 * np.ones(subset_length)
                     row[indexA] = partAs[i]
                     row[indexB] = partBs[i]
-                    row[-1] = 2
+                    row[-1] = 2     # The total available number of this person
                     row[-2] = sum(candidate[connection_all[k][i, :2].astype(int), 2]) + connection_all[k][i][2]
                     subset = np.vstack([subset, row])
 
@@ -235,7 +236,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
     canvas = oriImg.copy()
 
     for n in range(len(subset)):
-        for i in range(numofparts - 1):
+        for i in range(numofparts):
             index_head = subset[n][i]
             if index_head < 0:
                 continue
@@ -243,7 +244,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq):
             y = int(candidate[index_head.astype(int), 1])
             coo = (x, y)
             cv2.circle(canvas, coo, 2, colors[n], thickness=-1, )
-    to_plot = cv.addWeighted(oriImg, 0.5, canvas, 0.5, 0)
+    to_plot = cv.addWeighted(oriImg, 0.2, canvas, 0.8, 0)
     plt.imshow(to_plot.astype(np.uint8))
     plt.show()
 
@@ -257,11 +258,12 @@ def pad_image(img_ori, dshape=(368, 368)):
 
 
 if __name__ == '__main__':
+
     baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
     number_of_keypoints = train_dataset.number_of_keypoints
     net = DRN50_GCN(num_classes=train_dataset.number_of_keypoints + 2 * train_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50--2-0.0.params")
+    net.collect_params().load("output/gcn/GCN-resnet50--2-0.0_bk.params")
 
     # Single image demo
     # image_path = os.path.join("figures", "test2.jpg")
@@ -284,18 +286,28 @@ if __name__ == '__main__':
 
     for da in train_dataset:
         image_padded = pad_image(da[0])
-        data = image_padded[np.newaxis]
-        data = mx.nd.array(data).astype(np.float32)
-        # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
-        y_hat = net(data)
-        heatmap_prediction = y_hat[:, :number_of_keypoints]
-        pafmap_prediction = y_hat[:, number_of_keypoints:]
-        heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
-        pafmap_prediction_reshaped = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2],
-                                                               pafmap_prediction.shape[3])
-        parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
-                      pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), train_dataset.baseDataSet.skeleton)
-        plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
-        plt.figure()
-        plt.imshow(pafmap_prediction_reshaped[0, 0, 0].asnumpy() ** 2 + pafmap_prediction[0, 1, 0].asnumpy() ** 2)
-        plt.show()
+        # data = image_padded[np.newaxis]
+        # data = mx.nd.array(data).astype(np.float32)
+        # # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
+        # y_hat = net(data)
+        # heatmap_prediction = y_hat[:, :number_of_keypoints]
+        # pafmap_prediction = y_hat[:, number_of_keypoints:]
+        # heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
+        # pafmap_prediction_reshaped = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2],
+        #                                                        pafmap_prediction.shape[3])
+        # parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
+        #               pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), train_dataset.baseDataSet.skeleton)
+
+        heatmaps_gt = da[1]
+        pafmaps_gt = da[3]
+        # parse_heatpaf(image_padded,
+        #               heatmaps_gt.transpose((1, 2, 0)),
+        #               pafmaps_gt.reshape((-1, pafmaps_gt.shape[2], pafmaps_gt.shape[3])).transpose((1, 2, 0)),
+        #               train_dataset.baseDataSet.skeleton)
+
+        # plt.imshow(heatmap_prediction[0].max(axis=0).asnumpy())
+        # plt.figure()
+        for i in range(pafmaps_gt.shape[1]):
+            plt.imshow(pafmaps_gt[0, i]  + 0 * pafmaps_gt[1, i] ** 2)
+            plt.savefig("output/{}.png".format(i))
+            plt.show()

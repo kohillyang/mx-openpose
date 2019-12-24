@@ -75,7 +75,7 @@ if __name__ == '__main__':
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/gcn/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "GCN-resnet50-")
-    config.TRAIN.gpus = [6, 7]
+    config.TRAIN.gpus = [8, 3]
     config.TRAIN.lr = 1e-4
     config.TRAIN.momentum = 1.9
     config.TRAIN.wd = 0.0001
@@ -162,7 +162,7 @@ if __name__ == '__main__':
                     pafmap_prediction = y_hat[:, number_of_keypoints:]
                     pafmap_prediction = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
                     loss_heatmap = config.TRAIN.loss_heatmap_weight * mx.nd.sum(SigmodCrossEntropyLoss(heatmap_prediction, heatmaps) * heatmaps_masks) / (mx.nd.sum(heatmaps_masks) + 0.001)
-                    loss_pafmap = mx.nd.sum(((pafmap_prediction - pafmaps) ** 2) ) / (mx.nd.sum(pafmaps_masks) + 0.001)
+                    loss_pafmap = mx.nd.sum(((pafmap_prediction - pafmaps) ** 2) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 0.001)
                     # loss_pafmap = config.TRAIN.loss_paf_weight * mx.nd.sum((SigmodPafCrossEntropyLoss(pafmap_prediction, pafmaps)) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 0.001)
 
                     losses.append(loss_heatmap)
