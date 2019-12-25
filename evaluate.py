@@ -18,6 +18,29 @@ from models.drn_gcn import DRN50_GCN
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
 
+
+def padRightDownCorner(img, stride, padValue):
+    h = img.shape[0]
+    w = img.shape[1]
+
+    pad = 4 * [None]
+    pad[0] = 0 # up
+    pad[1] = 0 # left
+    pad[2] = 0 if (h%stride==0) else stride - (h % stride) # down
+    pad[3] = 0 if (w%stride==0) else stride - (w % stride) # right
+
+    img_padded = img
+    pad_up = np.tile(img_padded[0:1,:,:]*0 + padValue, (pad[0], 1, 1))
+    img_padded = np.concatenate((pad_up, img_padded), axis=0)
+    pad_left = np.tile(img_padded[:,0:1,:]*0 + padValue, (1, pad[1], 1))
+    img_padded = np.concatenate((pad_left, img_padded), axis=1)
+    pad_down = np.tile(img_padded[-2:-1,:,:]*0 + padValue, (pad[2], 1, 1))
+    img_padded = np.concatenate((img_padded, pad_down), axis=0)
+    pad_right = np.tile(img_padded[:,-2:-1,:]*0 + padValue, (1, pad[3], 1))
+    img_padded = np.concatenate((img_padded, pad_right), axis=1)
+
+    return img_padded, pad
+
 def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq, image_id=0, category_id=1, fscale=1.0):
     '''
     0：头顶
@@ -239,12 +262,13 @@ def pad_image(img_ori, dshape=(368, 368)):
 
 
 if __name__ == '__main__':
+    os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
     ctx_list = [mx.gpu(8)]
     baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
     val_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
     number_of_keypoints = val_dataset.number_of_keypoints
     net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50--4-0.0.params")
+    net.collect_params().load("output/gcn/GCN-resnet50--7-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
@@ -253,25 +277,31 @@ if __name__ == '__main__':
         image_id = val_dataset.baseDataSet[i][3]
         image_path = val_dataset.baseDataSet[i][0]
         image_ids.append(image_id)
-        image_padded, fscale = pad_image(cv2.imread(image_path)[:, :, ::-1])
-        # data = image_padded[np.newaxis]
-        # data = mx.nd.array(data).astype(np.float32).as_in_context(ctx_list[0])
-        # # data = mx.image.imread(image_path).expand_dims(axis=0).astype(np.float32)
-        # y_hat = net(data)
-        # heatmap_prediction = y_hat[:, :number_of_keypoints]
-        # pafmap_prediction = y_hat[:, number_of_keypoints:]
-        # heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
-        # pafmap_prediction_reshaped = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2],
-        #                                                        pafmap_prediction.shape[3])
-        # r = parse_heatpaf(image_padded, heatmap_prediction[0].transpose((1, 2, 0)).asnumpy(),
-        #                   pafmap_prediction[0].transpose((1, 2, 0)).asnumpy(), val_dataset.baseDataSet.skeleton,
-        #                   image_id=image_id, fscale=fscale)
-        heatmaps_gt = da[1]
-        pafmaps_gt = da[3]
-        r = parse_heatpaf(image_padded,
-                      heatmaps_gt.transpose((1, 2, 0)),
-                      pafmaps_gt.reshape((-1, pafmaps_gt.shape[2], pafmaps_gt.shape[3])).transpose((1, 2, 0)),
-                      val_dataset.baseDataSet.skeleton, image_id=image_id, fscale=fscale)
+        cimgRGB = cv2.imread(image_path)[:, :, ::-1]
+        cscale = 368 * 1.0 / cimgRGB.shape[0]
+        imageToTest = cv2.resize(cimgRGB, (0, 0), fx=cscale, fy=cscale, interpolation=cv2.INTER_CUBIC)
+        imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
+
+        y_hat = net(mx.nd.array(imageToTest_padded[np.newaxis]).astype(np.float32).as_in_context(ctx_list[0]))
+        heatmap_prediction = y_hat[:, :number_of_keypoints]
+        pafmap_prediction = y_hat[:, number_of_keypoints:]
+        heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
+        result = [pafmap_prediction, heatmap_prediction]
+        heatmap = np.moveaxis(result[1].asnumpy()[0], 0, -1)
+        heatmap = heatmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
+        heatmap = cv2.resize(heatmap, (cimgRGB.shape[1], cimgRGB.shape[0]), interpolation=cv2.INTER_CUBIC)
+
+        pagmap = np.moveaxis(result[0].asnumpy()[0], 0, -1)
+        pagmap = pagmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
+        pagmap = cv2.resize(pagmap, (cimgRGB.shape[1], cimgRGB.shape[0]), interpolation=cv2.INTER_CUBIC)
+        r = parse_heatpaf(cimgRGB, heatmap, pagmap, val_dataset.baseDataSet.skeleton, image_id=image_id, fscale=1.0)
+
+        # heatmaps_gt = da[1]
+        # pafmaps_gt = da[3]
+        # r = parse_heatpaf(image_padded,
+        #               heatmaps_gt.transpose((1, 2, 0)),
+        #               pafmaps_gt.reshape((-1, pafmaps_gt.shape[2], pafmaps_gt.shape[3])).transpose((1, 2, 0)),
+        #               val_dataset.baseDataSet.skeleton, image_id=image_id, fscale=fscale)
         results.extend(r)
 
     annType = ['segm','bbox','keypoints']
