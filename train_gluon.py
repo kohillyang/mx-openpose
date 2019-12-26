@@ -12,9 +12,8 @@ from mxnet import gluon
 
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
-from datasets.pose_transforms import default_train_transform
 from models.drn_gcn import DRN50_GCN
-
+import datasets.pose_transforms as transforms
 sys.path.append("MobulaOP")
 import mobula
 print(mobula.__path__)
@@ -74,7 +73,7 @@ if __name__ == '__main__':
     config = easydict.EasyDict()
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/gcn/"
-    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "GCN-resnet50-")
+    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "GCN-resnet50-cropped")
     config.TRAIN.gpus = [8, 3]
     config.TRAIN.lr = 1e-4
     config.TRAIN.momentum = 1.9
@@ -86,6 +85,19 @@ if __name__ == '__main__':
     config.TRAIN.loss_paf_weight = 1
     config.TRAIN.loss_heatmap_weight = 1
     config.TRAIN.resume = None
+    config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
+
+    # params for random cropping
+    config.TRAIN.TRANSFORM_PARAMS.crop_size_x = 368
+    config.TRAIN.TRANSFORM_PARAMS.crop_size_y = 368
+    config.TRAIN.TRANSFORM_PARAMS.center_perterb_max = 40
+
+    # params for putGaussianMaps
+    config.TRAIN.TRANSFORM_PARAMS.sigma = 25
+
+    # params for putVecMaps
+    config.TRAIN.TRANSFORM_PARAMS.distance_threshold = 8
+
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
 
@@ -96,8 +108,17 @@ if __name__ == '__main__':
     ctx = [mx.gpu(int(i)) for i in config.TRAIN.gpus]
     ctx = ctx if ctx else [mx.cpu()]
 
+    train_transform = transforms.Compose([transforms.RandomCenterCrop(config)])
+
     baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_train2017",))
-    train_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
+    train_dataset = PafHeatMapDataSet(baseDataSet, train_transform)
+
+    # for img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in train_dataset:
+    #     assert not np.any(np.isnan(pafmaps))
+    #     assert not np.any(np.isnan(pafmaps_masks))
+    #     train_dataset.viz(img, heatmaps, pafmaps, pafmaps_masks)
+    #
+    # exit()
     net = DRN50_GCN(num_classes=train_dataset.number_of_keypoints + 2 * train_dataset.number_of_pafs)
 
     params = net.collect_params()

@@ -165,4 +165,52 @@ class Compose(object):
         return args
 
 
-default_train_transform = Compose([ImagePad(dst_shape=(368, 368))])
+class RandomCenterCrop(object):
+    def __init__(self, cfg):
+        self.center_perterb_max = cfg.TRAIN.TRANSFORM_PARAMS.center_perterb_max  # type: float
+        self.crop_size_x = cfg.TRAIN.TRANSFORM_PARAMS.crop_size_x
+        self.crop_size_y = cfg.TRAIN.TRANSFORM_PARAMS.crop_size_y
+
+    def __call__(self, img_ori, bboxes, keypoints, availability):
+        bboxes = bboxes.copy()
+        keypoints = keypoints.copy()
+        availability = availability.copy()
+
+        # Choose a bbox
+        bbox_idx = np.random.randint(0, bboxes.shape[0])
+        bbox = bboxes[bbox_idx]
+        center_x = .5 * (bbox[0] + bbox[2])
+        center_y = .5 * (bbox[1] + bbox[3])
+        center_x += (np.random.random() * 2 - 1) * self.center_perterb_max
+        center_y += (np.random.random() * 2 - 1) * self.center_perterb_max
+
+        center_x = int(np.round(center_x))
+        center_y = int(np.round(center_y))
+
+        start_x = max(center_x - self.crop_size_x // 2, 0)
+        start_y = max(center_y - self.crop_size_y // 2, 0)
+
+        end_x = min(center_x + self.crop_size_x // 2, img_ori.shape[1])
+        end_y = min(center_y + self.crop_size_y // 2, img_ori.shape[1])
+
+        offset_x = center_x - self.crop_size_x // 2
+        offset_y = center_y - self.crop_size_y // 2
+
+        image_cropped = img_ori[start_y:end_y, start_x:end_x]
+        image_cropped_padded = np.zeros(shape=(self.crop_size_y, self.crop_size_x, img_ori.shape[2]), dtype=np.float32)
+        dst_start_x = start_x - offset_x
+        dst_start_y = start_y - offset_y
+        dst_end_x = dst_start_x + image_cropped.shape[1]
+        dst_end_y = dst_start_y + image_cropped.shape[0]
+        image_cropped_padded[dst_start_y:dst_end_y, dst_start_x:dst_end_x] = image_cropped
+        bboxes[:, (0, 2)] -= offset_x
+        bboxes[:, (1, 3)] -= offset_y
+        keypoints[:, :, 0] -= offset_x
+        keypoints[:, :, 1] -= offset_y
+        for m in range(keypoints.shape[0]):
+            for n in range(keypoints.shape[1]):
+                x, y = keypoints[m, n]
+                if not (0 <= x < image_cropped_padded.shape[1] and 0 <= y < image_cropped_padded.shape[0]):
+                    availability[m, n] = 0
+
+        return image_cropped_padded, bboxes, keypoints, availability

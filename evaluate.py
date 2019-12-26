@@ -268,7 +268,7 @@ if __name__ == '__main__':
     val_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
     number_of_keypoints = val_dataset.number_of_keypoints
     net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50--7-0.0.params")
+    net.collect_params().load("output/gcn/GCN-resnet50--8-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
@@ -276,6 +276,7 @@ if __name__ == '__main__':
         da = val_dataset[i]
         image_id = val_dataset.baseDataSet[i][3]
         image_path = val_dataset.baseDataSet[i][0]
+        print(image_id, image_path)
         image_ids.append(image_id)
         cimgRGB = cv2.imread(image_path)[:, :, ::-1]
         cscale = 368 * 1.0 / cimgRGB.shape[0]

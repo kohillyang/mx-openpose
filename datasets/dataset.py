@@ -1,5 +1,5 @@
 import cv2
-from datasets.pose_transforms import PafHeatMapBaseDataSet, default_train_transform
+from datasets.pose_transforms import PafHeatMapBaseDataSet
 import numpy as np
 
 
