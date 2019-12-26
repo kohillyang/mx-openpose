@@ -4,6 +4,7 @@ import sys
 import tqdm
 import time
 import easydict
+import pprint
 
 import mxnet as mx
 import mxnet.autograd as ag
@@ -19,7 +20,7 @@ import mobula
 print(mobula.__path__)
 
 @mobula.op.register
-class SigmodCrossEntropyLoss:
+class BCELoss:
     def forward(self, y, target):
         return mx.nd.log(1 + mx.nd.exp(y)) - target * y
 
@@ -34,12 +35,14 @@ class SigmodCrossEntropyLoss:
 
 
 @mobula.op.register
-class SigmodPafCrossEntropyLoss:
+class BCEPAFLoss:
     def forward(self, y, target):
-        return 2 * mx.nd.log(1 + mx.nd.exp(y)) - y - target * y
+        # return 2 * mx.nd.log(1 + mx.nd.exp(y)) - y - target * y
+        return (y - target) ** 2
 
     def backward(self, dy):
-        grad = mx.nd.sigmoid(self.X[0])*2 - 1 - self.X[1]
+        # grad = mx.nd.sigmoid(self.X[0])*2 - 1 - self.X[1]
+        grad = 2 * (self.X[0] - self.X[1])
         # grad *= 1e-4
         self.dX[0][:] = grad * dy
 
@@ -74,17 +77,16 @@ if __name__ == '__main__':
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/gcn/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "GCN-resnet50-cropped")
-    config.TRAIN.gpus = [2]
-    config.TRAIN.batch_size = 4
+    config.TRAIN.gpus = [1, 2]
+    config.TRAIN.batch_size = 8
+    config.TRAIN.optimizer = "adam"
     config.TRAIN.lr = 1e-4
-    config.TRAIN.momentum = 1.9
+    config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0001
     config.TRAIN.lr_step = [8, 12]
     config.TRAIN.warmup_step = 100
-    config.TRAIN.warmup_lr = 1e-5
+    config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
     config.TRAIN.end_epoch = 26
-    config.TRAIN.loss_paf_weight = 1
-    config.TRAIN.loss_heatmap_weight = 1
     config.TRAIN.resume = None
     config.TRAIN.DATASET = easydict.EasyDict()
     config.TRAIN.DATASET.coco_root = "/data/coco"
@@ -95,6 +97,10 @@ if __name__ == '__main__':
     config.TRAIN.TRANSFORM_PARAMS.crop_size_y = 368
     config.TRAIN.TRANSFORM_PARAMS.center_perterb_max = 40
 
+    # params for random scale
+    config.TRAIN.TRANSFORM_PARAMS.scale_min = 0.5
+    config.TRAIN.TRANSFORM_PARAMS.scale_max = 1.1
+
     # params for putGaussianMaps
     config.TRAIN.TRANSFORM_PARAMS.sigma = 25
 
@@ -103,6 +109,7 @@ if __name__ == '__main__':
 
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
+    logging.info(pprint.pformat(config))
 
     # fix seed for mxnet, numpy and python builtin random generator.
     mx.random.seed(3)
@@ -111,7 +118,8 @@ if __name__ == '__main__':
     ctx = [mx.gpu(int(i)) for i in config.TRAIN.gpus]
     ctx = ctx if ctx else [mx.cpu()]
 
-    train_transform = transforms.Compose([transforms.RandomCenterCrop(config)])
+    train_transform = transforms.Compose([transforms.RandomScale(config),
+                                          transforms.RandomCenterCrop(config)])
 
     baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, train_transform)
@@ -136,30 +144,33 @@ if __name__ == '__main__':
                 params[key].initialize(default_init=default_init)
     net.collect_params().reset_ctx(ctx)
 
-    train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=config.TRAIN.batch_size, shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
+    train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=config.TRAIN.batch_size,
+                                            shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
 
     lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(step=[len(train_loader) * x for x in config.TRAIN.lr_step],
                                                         warmup_mode="constant", factor=.1, base_lr=config.TRAIN.lr,
-                                                        warmup_steps=config.TRAIN.warmup_step, warmup_begin_lr=config.TRAIN.warmup_lr)
+                                                        warmup_steps=config.TRAIN.warmup_step,
+                                                        warmup_begin_lr=config.TRAIN.warmup_lr)
     if config.TRAIN.resume is not None:
         net.collect_params().load(config.TRAIN.resume)
-    # trainer = mx.gluon.Trainer(
-    #     net.collect_params(),  # fix batchnorm, fix first stage, etc...
-    #     'sgd',
-    #     {'learning_rate': config.TRAIN.lr,
-    #      'wd': config.TRAIN.wd,
-    #      'momentum': config.TRAIN.momentum,
-    #      'clip_gradient': 1e-2,
-    #      'lr_scheduler': lr_scheduler
-    #      })
-    trainer = gluon.Trainer(
-        net.collect_params(),
-        'adam',
-        {'learning_rate': config.TRAIN.lr,
-         #         'wd': args.wd, 'momentum': args.momentum
-         'lr_scheduler': lr_scheduler
-         }
-    )
+    if config.TRAIN.optimizer == "SGD":
+        trainer = mx.gluon.Trainer(
+            net.collect_params(),
+            'sgd',
+            {'learning_rate': config.TRAIN.lr,
+             'wd': config.TRAIN.wd,
+             'momentum': config.TRAIN.momentum,
+             'clip_gradient': None,
+             'lr_scheduler': lr_scheduler
+             })
+    else:
+        trainer = gluon.Trainer(
+            net.collect_params(),
+            'adam',
+            {'learning_rate': config.TRAIN.lr,
+             'lr_scheduler': lr_scheduler
+             }
+        )
 
     metric_loss_heatmaps = mx.metric.Loss("loss_heatmaps")
     metric_loss_pafmaps = mx.metric.Loss("loss_pafmaps")
@@ -185,9 +196,8 @@ if __name__ == '__main__':
                     heatmap_prediction = y_hat[:, :number_of_keypoints]
                     pafmap_prediction = y_hat[:, number_of_keypoints:]
                     pafmap_prediction = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
-                    loss_heatmap = config.TRAIN.loss_heatmap_weight * mx.nd.sum(SigmodCrossEntropyLoss(heatmap_prediction, heatmaps) * heatmaps_masks) / (mx.nd.sum(heatmaps_masks) + 0.001)
-                    loss_pafmap = mx.nd.sum(((pafmap_prediction - pafmaps) ** 2) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 0.001)
-                    # loss_pafmap = config.TRAIN.loss_paf_weight * mx.nd.sum((SigmodPafCrossEntropyLoss(pafmap_prediction, pafmaps)) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 0.001)
+                    loss_heatmap = mx.nd.sum(BCELoss(heatmap_prediction,  heatmaps) * heatmaps_masks) / (mx.nd.sum(heatmaps_masks) + 1)
+                    loss_pafmap = mx.nd.sum(BCEPAFLoss(pafmap_prediction, pafmaps) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 1)
 
                     losses.append(loss_heatmap)
                     losses.append(loss_pafmap)
@@ -203,5 +213,6 @@ if __name__ == '__main__':
             metric_batch_loss_pafmaps.reset()
         save_path = "{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, 0.0)
         net.collect_params().save(save_path)
+        logging.info("Saved checkpoint to {}".format(save_path))
         trainer.save_states(config.TRAIN.model_prefix + "-trainer.states")
 

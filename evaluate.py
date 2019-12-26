@@ -13,7 +13,6 @@ import json
 
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
-from datasets.pose_transforms import default_train_transform, ImagePad
 from models.drn_gcn import DRN50_GCN
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
@@ -255,6 +254,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq, image_id=0, category_id
 
 def pad_image(img_ori, dshape=(368, 368)):
     fscale = min(dshape[0] / img_ori.shape[0], dshape[1] / img_ori.shape[1])
+    fscale = 1.0
     img_resized = cv2.resize(img_ori, dsize=(0, 0), fx=fscale, fy=fscale)
     img_padded = np.zeros(shape=(int(dshape[0]), int(dshape[1]), 3), dtype=np.float32)
     img_padded[:img_resized.shape[0], :img_resized.shape[1], :img_resized.shape[2]] = img_resized
@@ -263,23 +263,22 @@ def pad_image(img_ori, dshape=(368, 368)):
 
 if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
-    ctx_list = [mx.gpu(8)]
-    baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
-    val_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
+    ctx_list = [mx.gpu(0)]
+    baseDataSet = COCOKeyPoints(root="/data/coco/", splits=("person_keypoints_val2017",))
+    val_dataset = PafHeatMapDataSet(baseDataSet)
     number_of_keypoints = val_dataset.number_of_keypoints
     net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50--8-0.0.params")
+    net.collect_params().load("output/gcn/GCN-resnet50-cropped-1-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
     for i in tqdm.tqdm(range(min(len(val_dataset), 50))):
-        da = val_dataset[i]
         image_id = val_dataset.baseDataSet[i][3]
         image_path = val_dataset.baseDataSet[i][0]
         print(image_id, image_path)
         image_ids.append(image_id)
         cimgRGB = cv2.imread(image_path)[:, :, ::-1]
-        cscale = 368 * 1.0 / cimgRGB.shape[0]
+        cscale = 1.0
         imageToTest = cv2.resize(cimgRGB, (0, 0), fx=cscale, fy=cscale, interpolation=cv2.INTER_CUBIC)
         imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
 
@@ -295,8 +294,13 @@ if __name__ == '__main__':
         pagmap = np.moveaxis(result[0].asnumpy()[0], 0, -1)
         pagmap = pagmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
         pagmap = cv2.resize(pagmap, (cimgRGB.shape[1], cimgRGB.shape[0]), interpolation=cv2.INTER_CUBIC)
+        plt.imshow(pagmap.max(axis=2))
+        plt.figure()
+        plt.imshow(heatmap.max(axis=2))
+        plt.show()
         r = parse_heatpaf(cimgRGB, heatmap, pagmap, val_dataset.baseDataSet.skeleton, image_id=image_id, fscale=1.0)
 
+        # da = val_dataset[i]
         # heatmaps_gt = da[1]
         # pafmaps_gt = da[3]
         # r = parse_heatpaf(image_padded,
@@ -308,7 +312,7 @@ if __name__ == '__main__':
     annType = ['segm','bbox','keypoints']
     annType = annType[2]      #specify type here
     prefix = 'person_keypoints' if annType=='keypoints' else 'instances'
-    annFile = '/data3/zyx/yks/dataset/coco2017/annotations/person_keypoints_val2017.json'
+    annFile = '/data/coco/annotations/person_keypoints_val2017.json'
     cocoGt = COCO(annFile)
     cats = cocoGt.loadCats(cocoGt.getCatIds())
     catIds = cocoGt.getCatIds(catNms=['person'])
