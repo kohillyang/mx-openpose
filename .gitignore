@@ -7,7 +7,6 @@ dataset/*
 *.pdf
 *.gv
 screenlog*
-models/*
 .vscode
 
 \.idea/
