@@ -1,7 +1,7 @@
 import cv2
 from datasets.pose_transforms import PafHeatMapBaseDataSet
 import numpy as np
-
+import mxnet as mx
 
 class PafHeatMapDataSet(PafHeatMapBaseDataSet):
     def __init__(self, base_dataset, transforms=None):
@@ -52,8 +52,8 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks = self.generate_pafmap_heatmap(image, bboxes, keypoints,
                                                                                              availability)
         masks = self.masks_generator(image, bboxes, joints[:, :, :2], joints[:, :, 2])
-        return img, heatmaps, heatmaps_masks * masks[np.newaxis], pafmaps, pafmaps_masks.max(axis=1, keepdims=True) #* masks[np.newaxis, np.newaxis]
-
+        r =(img, heatmaps, heatmaps_masks * masks[np.newaxis], pafmaps, pafmaps_masks.max(axis=1, keepdims=True)) #* masks[np.newaxis, np.newaxis]
+        return [mx.nd.array(x) for x in r]
 
 if __name__ == '__main__':
     from datasets.cocodatasets import COCOKeyPoints

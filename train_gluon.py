@@ -35,7 +35,7 @@ class BCELoss:
 
 
 @mobula.op.register
-class BCEPAFLoss:
+class L2Loss:
     def forward(self, y, target):
         # return 2 * mx.nd.log(1 + mx.nd.exp(y)) - y - target * y
         return (y - target) ** 2
@@ -44,6 +44,20 @@ class BCEPAFLoss:
         # grad = mx.nd.sigmoid(self.X[0])*2 - 1 - self.X[1]
         grad = 2 * (self.X[0] - self.X[1])
         # grad *= 1e-4
+        self.dX[0][:] = grad * dy
+
+    def infer_shape(self, in_shape):
+        assert in_shape[0] == in_shape[1]
+        return in_shape, [in_shape[0]]
+
+
+@mobula.op.register
+class BCEPAFLoss:
+    def forward(self, y, target):
+        return 2 * mx.nd.log(1 + mx.nd.exp(y)) - y - target * y
+
+    def backward(self, dy):
+        grad = mx.nd.sigmoid(self.X[0])*2 - 1 - self.X[1]
         self.dX[0][:] = grad * dy
 
     def infer_shape(self, in_shape):
@@ -197,7 +211,7 @@ if __name__ == '__main__':
                     pafmap_prediction = y_hat[:, number_of_keypoints:]
                     pafmap_prediction = pafmap_prediction.reshape(0, 2, -1, pafmap_prediction.shape[2], pafmap_prediction.shape[3])
                     loss_heatmap = mx.nd.sum(BCELoss(heatmap_prediction,  heatmaps) * heatmaps_masks) / (mx.nd.sum(heatmaps_masks) + 1)
-                    loss_pafmap = mx.nd.sum(BCEPAFLoss(pafmap_prediction, pafmaps) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 1)
+                    loss_pafmap = mx.nd.sum(L2Loss(pafmap_prediction, pafmaps) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 1)
 
                     losses.append(loss_heatmap)
                     losses.append(loss_pafmap)

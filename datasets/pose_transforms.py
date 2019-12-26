@@ -171,8 +171,8 @@ class RandomScale(object):
         self.scale_max = cfg.TRAIN.TRANSFORM_PARAMS.scale_max
 
     def __call__(self, img_ori, bboxes, keypoints, availability):
-        bboxes = bboxes.copy()
-        keypoints = keypoints.copy()
+        bboxes = bboxes.astype(np.float32).copy()
+        keypoints = keypoints.astype(np.float32).copy()
         availability = availability.copy()
         scale = np.random.random() * (self.scale_max - self.scale_min) + self.scale_min
         img_resized = cv2.resize(img_ori, (0, 0), fx=scale, fy = scale)
