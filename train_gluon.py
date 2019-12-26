@@ -74,7 +74,8 @@ if __name__ == '__main__':
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/gcn/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "GCN-resnet50-cropped")
-    config.TRAIN.gpus = [8, 3]
+    config.TRAIN.gpus = [2]
+    config.TRAIN.batch_size = 4
     config.TRAIN.lr = 1e-4
     config.TRAIN.momentum = 1.9
     config.TRAIN.wd = 0.0001
@@ -85,6 +86,8 @@ if __name__ == '__main__':
     config.TRAIN.loss_paf_weight = 1
     config.TRAIN.loss_heatmap_weight = 1
     config.TRAIN.resume = None
+    config.TRAIN.DATASET = easydict.EasyDict()
+    config.TRAIN.DATASET.coco_root = "/data/coco"
     config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
 
     # params for random cropping
@@ -110,7 +113,7 @@ if __name__ == '__main__':
 
     train_transform = transforms.Compose([transforms.RandomCenterCrop(config)])
 
-    baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_train2017",))
+    baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, train_transform)
 
     # for img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in train_dataset:
@@ -133,7 +136,7 @@ if __name__ == '__main__':
                 params[key].initialize(default_init=default_init)
     net.collect_params().reset_ctx(ctx)
 
-    train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
+    train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=config.TRAIN.batch_size, shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
 
     lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(step=[len(train_loader) * x for x in config.TRAIN.lr_step],
                                                         warmup_mode="constant", factor=.1, base_lr=config.TRAIN.lr,

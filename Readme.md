@@ -1,4 +1,7 @@
-# Introduction 
+# Requirements
+anaconda3/bin/python -m pip install mxnet_cu100 -i https://pypi.tuna.tsinghua.edu.cn/simple --pre tqdm opencv-python easydict pycocotools gluoncv
+# Introduction
+
 
 <div align="center">
 <img src="https://github.com/kohillyang/mx-openpose/blob/master/figures/Figure_1.png"><br><br>
