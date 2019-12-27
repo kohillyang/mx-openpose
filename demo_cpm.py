@@ -13,7 +13,7 @@ import json
 from scipy.ndimage.filters import gaussian_filter
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
-from models.drn_gcn import DRN50_GCN
+from models.cpm import CPMNet
 from models.cpm import CPMVGGNet
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
@@ -107,7 +107,7 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq, image_id=0, category_id
                     try:
                         vec = np.subtract(candB[j][:2], candA[i][:2])
                         # print('vec: ',vec)
-                        norm = math.sqrt(vec[0] * vec[0] + vec[1] * vec[1])
+                        norm = math.sqrt(vec[0] * vec[0] + vec[1] * vec[1]) + 1
                         # print('norm: ', norm)
                         vec = np.divide(vec, norm)
                         # print('normalized vec: ', vec)
@@ -269,8 +269,10 @@ if __name__ == '__main__':
     number_of_keypoints = val_dataset.number_of_keypoints
     # net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
     # sym, _, _ = mx.model.load_checkpoint('pretrained/pose', 0)
-    net = CPMVGGNet()
-    net.collect_params().load("pretrained/pose-0000.params")
+    # net = CPMVGGNet()
+    # net.collect_params().load("pretrained/pose-0000.params")
+    net = CPMNet(19, 19, resize=True)
+    net.collect_params().load("output/gcn/resnet50-cpm-teachered-cropped-1-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
@@ -280,7 +282,7 @@ if __name__ == '__main__':
     catIds = cocoGt.getCatIds(catNms=['person'])
     imgIds = cocoGt.getImgIds(catIds=catIds)
 
-    for i in tqdm.tqdm(range(min(len(val_dataset), 50))):
+    for i in tqdm.tqdm(range(min(len(val_dataset), 10))):
         # da = val_dataset[i]
         # image_id = val_dataset.baseDataSet[i][3]
         # image_path = val_dataset.baseDataSet[i][0]
@@ -297,18 +299,20 @@ if __name__ == '__main__':
 
         result = net(mx.nd.array(imageToTest_padded[np.newaxis]).as_in_context(ctx_list[0]))
 
-        heatmap = np.moveaxis(result[1].asnumpy()[0], 0, -1)
+        heatmap = np.moveaxis(result[-1].asnumpy()[0], 0, -1)
         heatmap = heatmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
-        pagmap = np.moveaxis(result[0].asnumpy()[0], 0, -1)
+        pagmap = np.moveaxis(result[-2].asnumpy()[0], 0, -1)
         pagmap = pagmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
 
-        plt.imshow(heatmap[:, :, :-1].max(axis=2))
-        plt.figure()
-        plt.imshow(cimgRGB)
-        plt.show()
-
+        # plt.imshow(heatmap[:, :, :-1].max(axis=2))
+        # plt.figure()
+        # plt.imshow(cimgRGB)
+        # plt.show()
+        import time
+        t0 = time.time()
         r = parse_heatpaf(cimgRGB, heatmap, pagmap , val_dataset.baseDataSet.skeleton,
                           image_id=image_id, fscale=1.0)
+        print(time.time() - t0)
         results.extend(r)
 
     annType = ['segm','bbox','keypoints']

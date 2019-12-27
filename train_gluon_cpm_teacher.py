@@ -99,9 +99,9 @@ if __name__ == '__main__':
     config.TRAIN.save_prefix = "output/gcn/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
     config.TRAIN.gpus = [1, 2]
-    config.TRAIN.batch_size = 4
-    config.TRAIN.optimizer = "adam"
-    config.TRAIN.lr = 1e-4
+    config.TRAIN.batch_size = 8
+    config.TRAIN.optimizer = "SGD"
+    config.TRAIN.lr = 4e-5
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0001
     config.TRAIN.lr_step = [8, 12]
@@ -216,7 +216,6 @@ if __name__ == '__main__':
             with ag.record():
                 for data in data_list:
                     pafmaps, heatmaps = net_teacher(data)[-2:]
-                    heatmaps = mx.nd.sigmoid(heatmaps)
                     # plt.imshow(heatmaps[0][:-1].max(axis=0).asnumpy())
                     # plt.figure()
                     # plt.imshow(data[0].asnumpy().astype(np.uint8))
