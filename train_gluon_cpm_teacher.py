@@ -101,7 +101,7 @@ if __name__ == '__main__':
     config.TRAIN.gpus = [1, 2]
     config.TRAIN.batch_size = 8
     config.TRAIN.optimizer = "SGD"
-    config.TRAIN.lr = 4e-5
+    config.TRAIN.lr = 5e-6
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0001
     config.TRAIN.lr_step = [8, 12]
@@ -110,7 +110,7 @@ if __name__ == '__main__':
     config.TRAIN.end_epoch = 26
     config.TRAIN.resume = None
     config.TRAIN.DATASET = easydict.EasyDict()
-    config.TRAIN.DATASET.coco_root = "/data/coco"
+    config.TRAIN.DATASET.coco_root = "/data1/coco"
     config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
 
     # params for random cropping
