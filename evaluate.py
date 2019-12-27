@@ -14,6 +14,7 @@ import json
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
 from models.drn_gcn import DRN50_GCN
+from models.cpm import CPMNet
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
 
@@ -267,8 +268,9 @@ if __name__ == '__main__':
     baseDataSet = COCOKeyPoints(root="/data/coco/", splits=("person_keypoints_val2017",))
     val_dataset = PafHeatMapDataSet(baseDataSet)
     number_of_keypoints = val_dataset.number_of_keypoints
-    net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50-cropped-4-0.0.params")
+    # net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
+    net = CPMNet(number_of_parts=val_dataset.number_of_keypoints, number_of_pafs=val_dataset.number_of_pafs)
+    net.collect_params().load("output/gcn/resnet50-cpm-cropped-0-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
@@ -283,8 +285,8 @@ if __name__ == '__main__':
         imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
 
         y_hat = net(mx.nd.array(imageToTest_padded[np.newaxis]).astype(np.float32).as_in_context(ctx_list[0]))
-        heatmap_prediction = y_hat[:, :number_of_keypoints]
-        pafmap_prediction = y_hat[:, number_of_keypoints:]
+        heatmap_prediction = y_hat[-1]
+        pafmap_prediction = y_hat[-2]
         heatmap_prediction = mx.nd.sigmoid(heatmap_prediction)
         result = [pafmap_prediction, heatmap_prediction]
         heatmap = np.moveaxis(result[1].asnumpy()[0], 0, -1)

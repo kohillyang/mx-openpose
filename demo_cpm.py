@@ -13,9 +13,8 @@ import json
 from scipy.ndimage.filters import gaussian_filter
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
-from datasets.pose_transforms import default_train_transform, ImagePad
 from models.drn_gcn import DRN50_GCN
-from models.cpm import get_cpm_symbol
+from models.cpm import CPMVGGNet
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
 
@@ -264,19 +263,18 @@ def pad_image(img_ori, dshape=(368, 368)):
 
 if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
-    ctx_list = [mx.gpu(8)]
-    baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
-    val_dataset = PafHeatMapDataSet(baseDataSet, default_train_transform)
+    ctx_list = [mx.gpu(0)]
+    baseDataSet = COCOKeyPoints(root="/data/coco", splits=("person_keypoints_val2017",))
+    val_dataset = PafHeatMapDataSet(baseDataSet, lambda x:x)
     number_of_keypoints = val_dataset.number_of_keypoints
     # net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
     # sym, _, _ = mx.model.load_checkpoint('pretrained/pose', 0)
-    sym = get_cpm_symbol()
-    net = mx.gluon.SymbolBlock(sym, mx.sym.var(name="data"))
+    net = CPMVGGNet()
     net.collect_params().load("pretrained/pose-0000.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
-    annFile = '/data3/zyx/yks/dataset/coco2017/annotations/person_keypoints_val2017.json'
+    annFile = '/data/coco/annotations/person_keypoints_val2017.json'
     cocoGt = COCO(annFile)
     cats = cocoGt.loadCats(cocoGt.getCatIds())
     catIds = cocoGt.getCatIds(catNms=['person'])
@@ -288,7 +286,7 @@ if __name__ == '__main__':
         # image_path = val_dataset.baseDataSet[i][0]
 
         img = cocoGt.loadImgs(imgIds[i])[0]
-        image_path = '/data3/zyx/yks/dataset/coco2017/val2017/' + img['file_name']
+        image_path = '/data/coco/val2017/' + img['file_name']
         image_id = img['id']
         image_ids.append(image_id)
         cimgRGB = cv2.imread(image_path)[:, :, ::-1]
@@ -296,20 +294,18 @@ if __name__ == '__main__':
         imageToTest = cv2.resize(cimgRGB, (0, 0), fx=cscale, fy=cscale, interpolation=cv2.INTER_CUBIC)
 
         imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
-        transposeImage = np.transpose(np.float32(imageToTest_padded[:, :, :]), (2, 0, 1)) / 256 - 0.5
-        testimage = transposeImage
 
-        result = net(mx.nd.array(testimage[np.newaxis]).as_in_context(ctx_list[0]))
+        result = net(mx.nd.array(imageToTest_padded[np.newaxis]).as_in_context(ctx_list[0]))
 
         heatmap = np.moveaxis(result[1].asnumpy()[0], 0, -1)
-        heatmap = cv2.resize(heatmap, (0, 0), fx=8, fy=8, interpolation=cv2.INTER_CUBIC)  # INTER_LINEAR
         heatmap = heatmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
-        heatmap = cv2.resize(heatmap, (cimgRGB.shape[1], cimgRGB.shape[0]), interpolation=cv2.INTER_CUBIC)
-
         pagmap = np.moveaxis(result[0].asnumpy()[0], 0, -1)
-        pagmap = cv2.resize(pagmap, (0, 0), fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
         pagmap = pagmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
-        pagmap = cv2.resize(pagmap, (cimgRGB.shape[1], cimgRGB.shape[0]), interpolation=cv2.INTER_CUBIC)
+
+        plt.imshow(heatmap[:, :, :-1].max(axis=2))
+        plt.figure()
+        plt.imshow(cimgRGB)
+        plt.show()
 
         r = parse_heatpaf(cimgRGB, heatmap, pagmap , val_dataset.baseDataSet.skeleton,
                           image_id=image_id, fscale=1.0)
@@ -318,7 +314,7 @@ if __name__ == '__main__':
     annType = ['segm','bbox','keypoints']
     annType = annType[2]      #specify type here
     prefix = 'person_keypoints' if annType=='keypoints' else 'instances'
-    annFile = '/data3/zyx/yks/dataset/coco2017/annotations/person_keypoints_val2017.json'
+    annFile = '/data/coco/annotations/person_keypoints_val2017.json'
     cocoGt = COCO(annFile)
     cats = cocoGt.loadCats(cocoGt.getCatIds())
     catIds = cocoGt.getCatIds(catNms=['person'])
