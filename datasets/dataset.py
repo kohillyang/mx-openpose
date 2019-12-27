@@ -53,7 +53,7 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
                                                                                              availability)
         masks = self.masks_generator(image, bboxes, joints[:, :, :2], joints[:, :, 2])
         r =(img, heatmaps, heatmaps_masks * masks[np.newaxis], pafmaps, pafmaps_masks.max(axis=1, keepdims=True)) #* masks[np.newaxis, np.newaxis]
-        return [mx.nd.array(x) for x in r]
+        return r
 
 if __name__ == '__main__':
     from datasets.cocodatasets import COCOKeyPoints

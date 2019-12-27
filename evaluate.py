@@ -268,7 +268,7 @@ if __name__ == '__main__':
     val_dataset = PafHeatMapDataSet(baseDataSet)
     number_of_keypoints = val_dataset.number_of_keypoints
     net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
-    net.collect_params().load("output/gcn/GCN-resnet50-cropped-1-0.0.params")
+    net.collect_params().load("output/gcn/GCN-resnet50-cropped-4-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
@@ -278,7 +278,7 @@ if __name__ == '__main__':
         print(image_id, image_path)
         image_ids.append(image_id)
         cimgRGB = cv2.imread(image_path)[:, :, ::-1]
-        cscale = 1.0
+        cscale = 368.0 / cimgRGB.shape[0]
         imageToTest = cv2.resize(cimgRGB, (0, 0), fx=cscale, fy=cscale, interpolation=cv2.INTER_CUBIC)
         imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
 
@@ -294,10 +294,10 @@ if __name__ == '__main__':
         pagmap = np.moveaxis(result[0].asnumpy()[0], 0, -1)
         pagmap = pagmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
         pagmap = cv2.resize(pagmap, (cimgRGB.shape[1], cimgRGB.shape[0]), interpolation=cv2.INTER_CUBIC)
-        plt.imshow(pagmap.max(axis=2))
-        plt.figure()
-        plt.imshow(heatmap.max(axis=2))
-        plt.show()
+        # plt.imshow(pagmap.max(axis=2))
+        # plt.figure()
+        # plt.imshow(heatmap.max(axis=2))
+        # plt.show()
         r = parse_heatpaf(cimgRGB, heatmap, pagmap, val_dataset.baseDataSet.skeleton, image_id=image_id, fscale=1.0)
 
         # da = val_dataset[i]
