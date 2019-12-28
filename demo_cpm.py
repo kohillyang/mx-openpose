@@ -235,13 +235,13 @@ def parse_heatpaf(oriImg, heatmap_avg, paf_avg, limbSeq, image_id=0, category_id
             if index > 0:
                 realpart = orderCOCO[part] - 1
                 if part == 0:
-                    keypoints[realpart * 3] = candidate[index][0]
-                    keypoints[realpart * 3 + 1] = candidate[index][1]
+                    keypoints[realpart * 3] = candidate[index][0] / fscale
+                    keypoints[realpart * 3 + 1] = candidate[index][1] / fscale
                     keypoints[realpart * 3 + 2] = 1
                     # score = score + candidate[index][2]
                 else:
-                    keypoints[(realpart) * 3] = candidate[index][0]
-                    keypoints[(realpart) * 3 + 1] = candidate[index][1]
+                    keypoints[(realpart) * 3] = candidate[index][0] / fscale
+                    keypoints[(realpart) * 3 + 1] = candidate[index][1] / fscale
                     keypoints[(realpart) * 3 + 2] = 1
                     # score = score + candidate[index][2]
 
@@ -269,10 +269,10 @@ if __name__ == '__main__':
     number_of_keypoints = val_dataset.number_of_keypoints
     # net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
     # sym, _, _ = mx.model.load_checkpoint('pretrained/pose', 0)
-    # net = CPMVGGNet()
+    # net = CPMVGGNet(resize=True)
     # net.collect_params().load("pretrained/pose-0000.params")
     net = CPMNet(19, 19, resize=True)
-    net.collect_params().load("output/gcn/resnet50-cpm-teachered-cropped-1-0.0.params")
+    net.collect_params().load("output/gcn/resnet50-cpm-teachered-cropped-0-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     catIds = cocoGt.getCatIds(catNms=['person'])
     imgIds = cocoGt.getImgIds(catIds=catIds)
 
-    for i in tqdm.tqdm(range(min(len(val_dataset), 10))):
+    for i in tqdm.tqdm(range(min(len(val_dataset), 50))):
         # da = val_dataset[i]
         # image_id = val_dataset.baseDataSet[i][3]
         # image_path = val_dataset.baseDataSet[i][0]
@@ -292,7 +292,7 @@ if __name__ == '__main__':
         image_id = img['id']
         image_ids.append(image_id)
         cimgRGB = cv2.imread(image_path)[:, :, ::-1]
-        cscale = 368 * 1.0 / cimgRGB.shape[0]
+        cscale = 1.0
         imageToTest = cv2.resize(cimgRGB, (0, 0), fx=cscale, fy=cscale, interpolation=cv2.INTER_CUBIC)
 
         imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
@@ -308,11 +308,11 @@ if __name__ == '__main__':
         # plt.figure()
         # plt.imshow(cimgRGB)
         # plt.show()
-        import time
-        t0 = time.time()
+        # import time
+        # t0 = time.time()
         r = parse_heatpaf(cimgRGB, heatmap, pagmap , val_dataset.baseDataSet.skeleton,
-                          image_id=image_id, fscale=1.0)
-        print(time.time() - t0)
+                          image_id=image_id, fscale=cscale)
+        # print(time.time() - t0)
         results.extend(r)
 
     annType = ['segm','bbox','keypoints']
