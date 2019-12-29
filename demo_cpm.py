@@ -272,7 +272,7 @@ if __name__ == '__main__':
     # net = CPMVGGNet(resize=True)
     # net.collect_params().load("pretrained/pose-0000.params")
     net = CPMNet(19, 19, resize=True)
-    net.collect_params().load("output/gcn/resnet50-cpm-teachered-cropped-0-0.0.params")
+    net.collect_params().load("output/gcn/resnet50-cpm-teachered-cropped-11-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
