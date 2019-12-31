@@ -167,8 +167,7 @@ if __name__ == '__main__':
         trainer = gluon.Trainer(
             net.collect_params(),
             'adam',
-            {'learning_rate': config.TRAIN.lr,
-             'lr_scheduler': lr_scheduler
+            {'learning_rate': 1e-4,
              }
         )
 
@@ -200,6 +199,7 @@ if __name__ == '__main__':
                     for i in range(len(y_hat) // 2):
                         heatmap_prediction = y_hat[i * 2 + 1]
                         pafmap_prediction = y_hat[i * 2]
+                        number_image_per_gpu = heatmap_prediction.shape[0]
                         loss_heatmap = mx.nd.sum(L2Loss(heatmap_prediction,  heatmaps) * heatmaps_masks)
                         loss_pafmap = mx.nd.sum(L2Loss(pafmap_prediction, pafmaps) * pafmaps_masks)
 
@@ -211,13 +211,13 @@ if __name__ == '__main__':
             trainer.step(config.TRAIN.batch_size, ignore_stale_grad=False)
 
             for i in range(6):
-                metric_dict["stage{}_heat".format(i)].update(None, losses_dict["stage_{}_heat".format(i)])
-                metric_dict["stage{}_paf".format(i)].update(None, losses_dict["stage_{}_paf".format(i)])
-
-            msg = ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
-            msg += ",lr={}".format(trainer.learning_rate)
-            logging.info(msg)
-            eval_metrics.reset()
+                metric_dict["stage{}_heat".format(i)].update(None, losses_dict["stage_{}_heat".format(i)] / number_image_per_gpu)
+                metric_dict["stage{}_paf".format(i)].update(None, losses_dict["stage_{}_paf".format(i)] / number_image_per_gpu)
+            if batch_cnt % 10 == 0:
+                msg = ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
+                msg += ",lr={}".format(trainer.learning_rate)
+                logging.info(msg)
+                eval_metrics.reset()
         save_path = "{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, 0.0)
         net.collect_params().save(save_path)
         logging.info("Saved checkpoint to {}".format(save_path))

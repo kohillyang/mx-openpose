@@ -6,7 +6,7 @@ def get_coco_config():
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/gcn/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
-    config.TRAIN.gpus = [1, 2]
+    config.TRAIN.gpus = [3, 8]
     config.TRAIN.batch_size = 8
     config.TRAIN.optimizer = "SGD"
     config.TRAIN.lr = 5e-6
@@ -18,7 +18,7 @@ def get_coco_config():
     config.TRAIN.end_epoch = 26
     config.TRAIN.resume = None
     config.TRAIN.DATASET = easydict.EasyDict()
-    config.TRAIN.DATASET.coco_root = "/data1/coco"
+    config.TRAIN.DATASET.coco_root = "/data3/zyx/yks/dataset/coco2017"
     config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
 
     # params for random cropping
