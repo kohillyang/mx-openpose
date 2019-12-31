@@ -14,6 +14,7 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         self.number_of_keypoints = self.baseDataSet.number_of_keypoints
         self.number_of_pafs = len(self.baseDataSet.skeleton)
         mobula.op.load('HeatGen')
+        mobula.op.load('PAFGen')
 
     def __len__(self):
         return len(self.baseDataSet)
@@ -56,7 +57,10 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         joints = np.concatenate([keypoints, availability[:, :, np.newaxis]], axis=2)
 
         heatmap = mobula.op.HeatGen[np.ndarray]()(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
-        plt.imshow(heatmap.max(axis=0))
+        limb_sequence = self.baseDataSet.skeleton;
+        pafmap = mobula.op.PAFGen[np.ndarray](limb_sequence)(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
+        pafmap = pafmap.reshape(len(limb_sequence), 2, pafmap.shape[1], pafmap.shape[2])
+        plt.imshow((pafmap[:, 0] **2 + pafmap[:, 1] **2).max(axis=0))
         plt.figure()
         plt.imshow(image.astype(np.uint8))
         plt.show()

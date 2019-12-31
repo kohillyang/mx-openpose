@@ -16,3 +16,4 @@ evaluationResult\.json
 pretrained/
 
 datasets/HeatGen/build
+datasets/PAFGen/build
