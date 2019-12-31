@@ -14,3 +14,5 @@ output/*
 evaluationResult\.json
 
 pretrained/
+
+datasets/HeatGen/build

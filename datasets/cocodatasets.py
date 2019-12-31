@@ -222,6 +222,17 @@ class _COCOKeyPoints(object):
         return np.array([keypoint_x / num, keypoint_y / num]), num
 
 
+def convert_coco2openpose(joints):
+    assert joints.shape[0] == 17
+    assert joints.shape[1] == 3
+    neck_available = int(joints[5, 2] and joints[6, 2])  # left shoulder and right shoulder
+    neck_point = .5 * (joints[5, :2] + joints[6, :2]) if neck_available else np.zeros(shape=(2, ), dtype=np.float32)
+    orderCOCO = np.array([1, 0, 7, 9, 11, 6, 8, 10, 13, 15, 17, 12, 14, 16, 3, 2, 5, 4]) - 1
+    r = joints[orderCOCO]
+    r[1] = neck_point[0], neck_point[1], neck_available
+    return r
+
+
 class COCOKeyPoints(object):
     def __init__(self, *args, **kwargs):
         self.base_dataset = _COCOKeyPoints(*args, **kwargs)
@@ -237,7 +248,10 @@ class COCOKeyPoints(object):
             self.objs[image_id]["bboxes"].append(bbox)
             self.objs[image_id]["joints"].append(joints_2d)
         self.image_ids = list(self.objs.keys())
-        self.skeleton = np.array(self.base_dataset.SKELETON) - 1
+        limbSeq = [[2, 3], [2, 6], [3, 4], [4, 5], [6, 7], [7, 8], [2, 9], [9, 10],
+                   [10, 11], [2, 12], [12, 13], [13, 14], [2, 1], [1, 15], [15, 17],
+                   [1, 16], [16, 18], [3, 17], [6, 18]]
+        self.skeleton = np.array(limbSeq) - 1
         self.number_of_keypoints = len(self.base_dataset.KEYPOINTS)
 
     def __getitem__(self, item):
@@ -246,6 +260,7 @@ class COCOKeyPoints(object):
         joints = obj["joints"]
         image_path = obj["image_path"]
         # Return as path, bboxes, joints, image_id
+        joints = np.array([convert_coco2openpose(x) for x in joints])
         return image_path, np.array(bboxes), np.array(joints), self.image_ids[item]
 
     def __len__(self):

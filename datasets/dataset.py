@@ -2,6 +2,8 @@ import cv2
 from datasets.pose_transforms import PafHeatMapBaseDataSet
 import numpy as np
 import mxnet as mx
+import mobula
+
 
 class PafHeatMapDataSet(PafHeatMapBaseDataSet):
     def __init__(self, base_dataset, transforms=None):
@@ -10,6 +12,7 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         self.transforms = transforms
         self.number_of_keypoints = self.baseDataSet.number_of_keypoints
         self.number_of_pafs = len(self.baseDataSet.skeleton)
+        mobula.op.load('HeatGen')
 
     def __len__(self):
         return len(self.baseDataSet)
@@ -49,17 +52,13 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         availability = availability.astype(np.float32)
         if self.transforms is not None:
             image, bboxes, keypoints, availability = self.transforms(image, bboxes, keypoints, availability)
-        img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks = self.generate_pafmap_heatmap(image, bboxes, keypoints,
-                                                                                             availability)
-        masks = self.masks_generator(image, bboxes, joints[:, :, :2], joints[:, :, 2])
-        r =(img, heatmaps, heatmaps_masks * masks[np.newaxis], pafmaps, pafmaps_masks.max(axis=1, keepdims=True)) #* masks[np.newaxis, np.newaxis]
-        return r
+        heatmap = mobula.op.HeatGen[np.ndarray]()(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
 
 if __name__ == '__main__':
     from datasets.cocodatasets import COCOKeyPoints
 
-    baseDataSet = COCOKeyPoints(root="/data3/zyx/yks/dataset/coco2017", splits=("person_keypoints_val2017",))
-    dataSet = PafHeatMapDataSet(baseDataSet, default_train_transform)
+    baseDataSet = COCOKeyPoints(root="/data/coco", splits=("person_keypoints_val2017",))
+    dataSet = PafHeatMapDataSet(baseDataSet)
     x = dataSet[0]
     for xx in x:
         print(xx.shape)
