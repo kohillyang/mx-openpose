@@ -112,9 +112,26 @@ if __name__ == '__main__':
 
     baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, train_transform)
+
+    # import matplotlib.pyplot as plt
+    # for i in range(len(train_dataset)):
+    #     image, heatmap, hm, pf, pfm = train_dataset[i]
+    #     plt.imshow(image.astype(np.uint8))
+    #     plt.savefig("output/figures/{}_ori_image.jpg".format(i))
+    #     plt.imshow(heatmap.max(axis=0))
+    #
+    #     for j in range(heatmap.shape[0]):
+    #         plt.imshow(heatmap[j])
+    #         plt.savefig("output/figures/{}_{}_heatmap.jpg".format(i, j))
+    #     for j in range(pf.shape[0]):
+    #         plt.imshow(pf[j])
+    #         plt.savefig("output/figures/{}_{}_pafmap.jpg".format(i, j))
+    #     plt.close()
+    # exit()
+
     _ = train_dataset[0]  # Trigger mobula compiling
     net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
-
+    net.hybridize(static_alloc=True, static_shape=True)
     params = net.collect_params()
     for key in params.keys():
         if params[key]._data is None:
@@ -191,7 +208,7 @@ if __name__ == '__main__':
                         losses_dict["stage_{}_heat".format(i)] = loss_heatmap
                         losses_dict["stage_{}_paf".format(i)] = loss_pafmap
             ag.backward(losses)
-            trainer.step(1, ignore_stale_grad=False)
+            trainer.step(config.TRAIN.batch_size, ignore_stale_grad=False)
 
             for i in range(6):
                 metric_dict["stage{}_heat".format(i)].update(None, losses_dict["stage_{}_heat".format(i)])
