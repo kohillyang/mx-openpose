@@ -4,6 +4,7 @@
 #include "bilinear.h"
 #include "mobula_op.h"
 #include <memory>
+#include <algorithm>
 namespace mobula {
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
@@ -31,17 +32,31 @@ template <typename T>
 // bboxes, keypoints, h, w, nperson, nparts, out_temp
 MOBULA_KERNEL heat_gen_kernel(const T* keypoints, const int h, const int w, const int stride,
                               const int nperson, const int nparts, const float sigma, T* output) {
+    const int grid_x = w / stride;
+    const int grid_y = h / stride;
+    const int channelOffset = grid_y * grid_x;
     for(int i = 0; i < nperson; i++){
         for(int j=0; j < nparts; j++){
             float x = keypoints[i * nparts * 3 + j * 3 + 0];
             float y = keypoints[i * nparts * 3 + j * 3 + 1];
             int available = keypoints[i * nparts * 3 + j * 3 + 2];
             if(available && x >=0 && y >= 0){
-                putGaussianMaps(output + (h / stride) * (w / stride) * j, x, y, stride, w / stride, h / stride, sigma);
+                putGaussianMaps(output + grid_x * grid_y * j, x, y, stride, grid_x, grid_y, sigma);
             }
         }
     }
-}
+    //put background channel
+    for (int g_y = 0; g_y < grid_y; g_y++){
+        for (int g_x = 0; g_x < grid_x; g_x++){
+            float maximum = 0;
+            //second background channel
+            for (int i = 0; i < nparts; i++){
+               maximum = std::max(maximum, output[i*channelOffset + g_y*grid_x + g_x]);
+            }
+            output[nparts *channelOffset + g_y*grid_x + g_x] = max(1.0-maximum, 0.0);
+        }
+    }
+} // heat_gen_kernel
 
 
 }  // namespace mobula

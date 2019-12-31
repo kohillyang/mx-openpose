@@ -7,10 +7,9 @@ import numpy as np
 
 @mobula.op.register
 class HeatGen:
-    def __init__(self, stride=8, sigma=26, distance_threshold=1):
+    def __init__(self, stride=8, sigma=26):
         self.stride = stride
         self.sigma = sigma
-        self.distance_threshold = distance_threshold
 
     def forward(self, data, bboxes, keypoints):
         if self.req[0] == req.null:
@@ -43,4 +42,5 @@ class HeatGen:
         stride = self.stride
         assert h % stride == 0
         assert w % stride == 0
-        return in_shape, [(number_of_parts, h // self.stride, w // self.stride)]
+        # extra channel for background
+        return in_shape, [(number_of_parts + 1, h // self.stride, w // self.stride)]
