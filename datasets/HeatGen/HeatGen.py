@@ -7,7 +7,7 @@ import numpy as np
 
 @mobula.op.register
 class HeatGen:
-    def __init__(self, stride=1, sigma=26, distance_threshold=1):
+    def __init__(self, stride=8, sigma=26, distance_threshold=1):
         self.stride = stride
         self.sigma = sigma
         self.distance_threshold = distance_threshold
@@ -43,4 +43,4 @@ class HeatGen:
         stride = self.stride
         assert h % stride == 0
         assert w % stride == 0
-        return in_shape, [number_of_parts, h // self.stride, w // self.stride]
+        return in_shape, [(number_of_parts, h // self.stride, w // self.stride)]

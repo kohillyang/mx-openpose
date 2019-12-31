@@ -34,10 +34,10 @@ MOBULA_KERNEL heat_gen_kernel(const T* keypoints, const int h, const int w, cons
     for(int i = 0; i < nperson; i++){
         for(int j=0; j < nparts; j++){
             float x = keypoints[i * nparts * 3 + j * 3 + 0];
-            float y = keypoints[i * nparts * 3 + j * 3 + 0];
-            int available = keypoints[i * nparts * 3 + j * 3 + 0];
-            if(available){
-                putGaussianMaps(output, x, y, stride, w / stride, h / stride, sigma);
+            float y = keypoints[i * nparts * 3 + j * 3 + 1];
+            int available = keypoints[i * nparts * 3 + j * 3 + 2];
+            if(available && x >=0 && y >= 0){
+                putGaussianMaps(output + (h / stride) * (w / stride) * j, x, y, stride, w / stride, h / stride, sigma);
             }
         }
     }

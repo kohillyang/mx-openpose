@@ -3,6 +3,7 @@ from datasets.pose_transforms import PafHeatMapBaseDataSet
 import numpy as np
 import mxnet as mx
 import mobula
+import matplotlib.pyplot as plt
 
 
 class PafHeatMapDataSet(PafHeatMapBaseDataSet):
@@ -39,7 +40,7 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
                     image_can = image.copy()
                     image_can[:, :, 2] = paf_norm * 255
                     axes[i, j].imshow(image_can)
-        axes[-1, -1].imshow(image)
+        axes[-1, -1].imshow(image.astype(np.float32))
         plt.figure()
         plt.imshow(pafmaps_masks[0].max(axis=0))
         plt.show()
@@ -52,18 +53,70 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         availability = availability.astype(np.float32)
         if self.transforms is not None:
             image, bboxes, keypoints, availability = self.transforms(image, bboxes, keypoints, availability)
+        joints = np.concatenate([keypoints, availability[:, :, np.newaxis]], axis=2)
+
         heatmap = mobula.op.HeatGen[np.ndarray]()(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
+        plt.imshow(heatmap.max(axis=0))
+        plt.figure()
+        plt.imshow(image.astype(np.uint8))
+        plt.show()
+        #
+        # _, heatmaps, heatmaps_masks = self.heatmap_generator(image, keypoints, availability)
+        # plt.figure()
+        # plt.imshow(heatmaps.max(axis=0))
+        # plt.show()
+        return heatmap
+
 
 if __name__ == '__main__':
     from datasets.cocodatasets import COCOKeyPoints
+    import datasets.pose_transforms as transforms
+    import easydict
+    import os
+    config = easydict.EasyDict()
+    config.TRAIN = easydict.EasyDict()
+    config.TRAIN.save_prefix = "output/gcn/"
+    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
+    config.TRAIN.gpus = [1, 2]
+    config.TRAIN.batch_size = 8
+    config.TRAIN.optimizer = "SGD"
+    config.TRAIN.lr = 5e-6
+    config.TRAIN.momentum = 0.9
+    config.TRAIN.wd = 0.0001
+    config.TRAIN.lr_step = [8, 12]
+    config.TRAIN.warmup_step = 100
+    config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
+    config.TRAIN.end_epoch = 26
+    config.TRAIN.resume = None
+    config.TRAIN.DATASET = easydict.EasyDict()
+    config.TRAIN.DATASET.coco_root = "/data1/coco"
+    config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
+
+    # params for random cropping
+    config.TRAIN.TRANSFORM_PARAMS.crop_size_x = 368
+    config.TRAIN.TRANSFORM_PARAMS.crop_size_y = 368
+    config.TRAIN.TRANSFORM_PARAMS.center_perterb_max = 40
+
+    # params for random scale
+    config.TRAIN.TRANSFORM_PARAMS.scale_min = 0.5
+    config.TRAIN.TRANSFORM_PARAMS.scale_max = 1.1
+
+    # params for putGaussianMaps
+    config.TRAIN.TRANSFORM_PARAMS.sigma = 25
+
+    # params for putVecMaps
+    config.TRAIN.TRANSFORM_PARAMS.distance_threshold = 8
+    train_transform = transforms.Compose([transforms.RandomScale(config), transforms.RandomCenterCrop(config)])
 
     baseDataSet = COCOKeyPoints(root="/data/coco", splits=("person_keypoints_val2017",))
-    dataSet = PafHeatMapDataSet(baseDataSet)
+    dataSet = PafHeatMapDataSet(baseDataSet, train_transform)
+    for x in dataSet:
+        pass
     x = dataSet[0]
     for xx in x:
         print(xx.shape)
         print(xx.dtype)
-    for img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in dataSet:
-        assert not np.any(np.isnan(pafmaps))
-        assert not np.any(np.isnan(pafmaps_masks))
-        dataSet.viz(img, heatmaps, pafmaps, pafmaps_masks)
+    # for img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in dataSet:
+    #     assert not np.any(np.isnan(pafmaps))
+    #     assert not np.any(np.isnan(pafmaps_masks))
+    #     dataSet.viz(img, heatmaps, pafmaps, pafmaps_masks)
