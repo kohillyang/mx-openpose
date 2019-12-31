@@ -92,40 +92,9 @@ def log_init(filename):
 
 if __name__ == '__main__':
     os.environ["MXNET_USE_FUSION"]="0"
-    config = easydict.EasyDict()
-    config.TRAIN = easydict.EasyDict()
-    config.TRAIN.save_prefix = "output/gcn/"
-    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-cropped")
-    config.TRAIN.gpus = [2]
-    config.TRAIN.batch_size = 4
-    config.TRAIN.optimizer = "adam"
-    config.TRAIN.lr = 1e-4
-    config.TRAIN.momentum = 0.9
-    config.TRAIN.wd = 0.0001
-    config.TRAIN.lr_step = [8, 12]
-    config.TRAIN.warmup_step = 100
-    config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
-    config.TRAIN.end_epoch = 26
-    config.TRAIN.resume = None
-    config.TRAIN.DATASET = easydict.EasyDict()
-    config.TRAIN.DATASET.coco_root = "/data/coco"
-    config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
-
-    # params for random cropping
-    config.TRAIN.TRANSFORM_PARAMS.crop_size_x = 368
-    config.TRAIN.TRANSFORM_PARAMS.crop_size_y = 368
-    config.TRAIN.TRANSFORM_PARAMS.center_perterb_max = 40
-
-    # params for random scale
-    config.TRAIN.TRANSFORM_PARAMS.scale_min = 0.5
-    config.TRAIN.TRANSFORM_PARAMS.scale_max = 1.1
-
-    # params for putGaussianMaps
-    config.TRAIN.TRANSFORM_PARAMS.sigma = 25
-
-    # params for putVecMaps
-    config.TRAIN.TRANSFORM_PARAMS.distance_threshold = 8
-
+    from configs import get_coco_config
+    config = get_coco_config()
+    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-resnet-cropped")
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))
@@ -142,13 +111,6 @@ if __name__ == '__main__':
 
     baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, train_transform)
-
-    # for img, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in train_dataset:
-    #     assert not np.any(np.isnan(pafmaps))
-    #     assert not np.any(np.isnan(pafmaps_masks))
-    #     train_dataset.viz(img, heatmaps, pafmaps, pafmaps_masks)
-    #
-    # exit()
     net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
 
     params = net.collect_params()
@@ -213,17 +175,14 @@ if __name__ == '__main__':
             losses = []
             losses_dict = {}
             with ag.record():
-                for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in zip(data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list, pafmaps_masks_list):
-                    number_of_keypoints = heatmaps.shape[1]
+                for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in zip(
+                        data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list, pafmaps_masks_list):
                     y_hat = net(data)
-                    pafmaps = pafmaps.reshape(0, -1, pafmaps.shape[3], pafmaps.shape[4])
-                    pafmaps_masks = pafmaps_masks.reshape(pafmaps_masks.shape[0], 1, pafmaps_masks.shape[-2], pafmaps_masks.shape[-1])
-
                     for i in range(len(y_hat) // 2):
-                        heatmap_prediction = mx.nd.contrib.BilinearResize2D(y_hat[i * 2 + 1], like=heatmaps, mode="like")
-                        pafmap_prediction =mx.nd.contrib.BilinearResize2D(y_hat[i * 2], like=pafmaps, mode="like")
-                        loss_heatmap = mx.nd.sum(BCELoss(heatmap_prediction,  heatmaps) * heatmaps_masks) / (mx.nd.sum(heatmaps_masks) + 1)
-                        loss_pafmap = mx.nd.sum(L2Loss(pafmap_prediction, pafmaps) * pafmaps_masks) / (mx.nd.sum(pafmaps_masks) + 1)
+                        heatmap_prediction = y_hat[i * 2 + 1]
+                        pafmap_prediction = y_hat[i * 2]
+                        loss_heatmap = mx.nd.sum(L2Loss(heatmap_prediction,  heatmaps) * heatmaps_masks)
+                        loss_pafmap = mx.nd.sum(L2Loss(pafmap_prediction, pafmaps) * pafmaps_masks)
 
                         losses.append(loss_heatmap)
                         losses.append(loss_pafmap)

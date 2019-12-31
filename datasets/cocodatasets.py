@@ -252,7 +252,7 @@ class COCOKeyPoints(object):
                    [10, 11], [2, 12], [12, 13], [13, 14], [2, 1], [1, 15], [15, 17],
                    [1, 16], [16, 18], [3, 17], [6, 18]]
         self.skeleton = np.array(limbSeq) - 1
-        self.number_of_keypoints = len(self.base_dataset.KEYPOINTS)
+        self.number_of_keypoints = 19
 
     def __getitem__(self, item):
         obj = self.objs[self.image_ids[item]]
