@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+sys.path.append("MobulaOP")
 import tqdm
 import time
 import easydict
@@ -15,7 +16,7 @@ from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
 from models.cpm import CPMNet
 import datasets.pose_transforms as transforms
-sys.path.append("MobulaOP")
+
 import mobula
 print(mobula.__path__)
 
@@ -111,6 +112,7 @@ if __name__ == '__main__':
 
     baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, train_transform)
+    _ = train_dataset[0]  # Trigger mobula compiling
     net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
 
     params = net.collect_params()
