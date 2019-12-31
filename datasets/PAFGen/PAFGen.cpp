@@ -10,7 +10,7 @@ namespace mobula {
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 template<typename Dtype>
-
+#include <cstdio>
 void putVecMaps(Dtype* entryX, Dtype* entryY, Dtype* count, float centerA_x0, float centerA_y0,
                 float centerB_x1, float centerB_y1, int stride, int grid_x, int grid_y, int thre){
     centerA_x0 = centerA_x0 / stride;
@@ -28,6 +28,10 @@ void putVecMaps(Dtype* entryX, Dtype* entryY, Dtype* count, float centerA_x0, fl
     int max_y = std::min( int(round(std::max(centerA_y0, centerB_y1)+thre)), grid_y);
 
     float norm_bc = std::sqrt(bc_x*bc_x + bc_y*bc_y);
+    if(norm_bc < 1e-3){
+        std::printf("norm bc is too small, plussing 1 to avoid NAN");
+        norm_bc += 1.0f;
+    }
     bc_x = bc_x / norm_bc;
     bc_y = bc_y / norm_bc;
 
