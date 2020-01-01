@@ -4,12 +4,12 @@ import easydict, os
 def get_coco_config():
     config = easydict.EasyDict()
     config.TRAIN = easydict.EasyDict()
-    config.TRAIN.save_prefix = "output/gcn/"
+    config.TRAIN.save_prefix = "output/cpm/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
     config.TRAIN.gpus = [3, 8]
     config.TRAIN.batch_size = 8
     config.TRAIN.optimizer = "SGD"
-    config.TRAIN.lr = 5e-6
+    config.TRAIN.lr = 4e-5
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0001
     config.TRAIN.lr_step = [8, 12]
@@ -31,7 +31,7 @@ def get_coco_config():
     config.TRAIN.TRANSFORM_PARAMS.scale_max = 1.1
 
     # params for putGaussianMaps
-    config.TRAIN.TRANSFORM_PARAMS.sigma = 25
+    config.TRAIN.TRANSFORM_PARAMS.sigma = 7.0
 
     # params for putVecMaps
     config.TRAIN.TRANSFORM_PARAMS.distance_threshold = 8
