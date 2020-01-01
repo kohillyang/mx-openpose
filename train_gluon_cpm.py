@@ -148,7 +148,8 @@ if __name__ == '__main__':
                                             shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
 
     lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(step=[len(train_loader) * x for x in config.TRAIN.lr_step],
-                                                        warmup_mode="constant", factor=.1, base_lr=config.TRAIN.lr,
+                                                        warmup_mode="constant", factor=config.TRAIN.gamma,
+                                                        base_lr=config.TRAIN.lr,
                                                         warmup_steps=config.TRAIN.warmup_step,
                                                         warmup_begin_lr=config.TRAIN.warmup_lr)
     if config.TRAIN.resume is not None:
