@@ -9,11 +9,11 @@ def get_coco_config():
     config.TRAIN.gpus = [3, 8]
     config.TRAIN.batch_size = 8
     config.TRAIN.optimizer = "SGD"
-    config.TRAIN.lr = 2e-5
+    config.TRAIN.lr = 4e-5
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0001
     config.TRAIN.lr_step = [8, 12, 16]
-    config.TRAIN.warmup_step = 100
+    config.TRAIN.warmup_step = 1000
     config.TRAIN.gamma = 1.0 / 3
     config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
     config.TRAIN.end_epoch = 26

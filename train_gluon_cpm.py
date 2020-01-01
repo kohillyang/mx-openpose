@@ -111,7 +111,7 @@ if __name__ == '__main__':
                                           transforms.RandomCenterCrop(config)])
 
     baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
-    train_dataset = PafHeatMapDataSet(baseDataSet, train_transform)
+    train_dataset = PafHeatMapDataSet(baseDataSet, config, train_transform)
 
     # import matplotlib.pyplot as plt
     # for i in range(len(train_dataset)):
