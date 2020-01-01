@@ -248,10 +248,29 @@ class COCOKeyPoints(object):
             self.objs[image_id]["bboxes"].append(bbox)
             self.objs[image_id]["joints"].append(joints_2d)
         self.image_ids = list(self.objs.keys())
-        limbSeq = [[2, 3], [2, 6], [3, 4], [4, 5], [6, 7], [7, 8], [2, 9], [9, 10],
-                   [10, 11], [2, 12], [12, 13], [13, 14], [2, 1], [1, 15], [15, 17],
-                   [1, 16], [16, 18], [3, 17], [6, 18]]
-        self.skeleton = np.array(limbSeq) - 1
+        # limbSeq = [[2, 3], [2, 6], [3, 4], [4, 5], [6, 7], [7, 8], [2, 9], [9, 10],
+        #            [10, 11], [2, 12], [12, 13], [13, 14], [2, 1], [1, 15], [15, 17],
+        #            [1, 16], [16, 18], [3, 17], [6, 18]]
+        limbSeq = [[1, 8],
+                   [11, 12],
+                   [8, 9],
+                   [9, 10],
+                   [12, 13],
+                   [1, 0],
+                   [1, 2],
+                   [1, 5],
+                   [2, 3],
+                   [3, 4],
+                   [5, 6],
+                   [6, 7],
+                   [14, 16],
+                   [0, 15],
+                   [2, 16],
+                   [15, 17],
+                   [5, 17],
+                   [1, 11],
+                   [0, 14]]
+        self.skeleton = np.array(limbSeq)
         self.number_of_keypoints = 19
 
     def __getitem__(self, item):
