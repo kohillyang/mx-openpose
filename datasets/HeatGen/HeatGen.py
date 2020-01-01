@@ -7,7 +7,7 @@ import numpy as np
 
 @mobula.op.register
 class HeatGen:
-    def __init__(self, stride=8, sigma=26):
+    def __init__(self, stride, sigma):
         self.stride = stride
         self.sigma = sigma
 

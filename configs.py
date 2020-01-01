@@ -33,6 +33,7 @@ def get_coco_config():
 
     # params for putGaussianMaps
     config.TRAIN.TRANSFORM_PARAMS.sigma = 7.0
+    config.TRAIN.TRANSFORM_PARAMS.stride = 8
 
     # params for putVecMaps
     config.TRAIN.TRANSFORM_PARAMS.distance_threshold = 8

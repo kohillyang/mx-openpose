@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 class PafHeatMapDataSet(PafHeatMapBaseDataSet):
-    def __init__(self, base_dataset, transforms=None):
+    def __init__(self, base_dataset, config, transforms=None):
         super(PafHeatMapDataSet, self).__init__(base_dataset.skeleton[:, 0], base_dataset.skeleton[:, 1])
         self.baseDataSet = base_dataset
         self.transforms = transforms
@@ -16,6 +16,9 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         self.number_of_pafs = len(self.baseDataSet.skeleton)
         mobula.op.load('HeatGen', os.path.dirname(__file__))
         mobula.op.load('PAFGen', os.path.dirname(__file__))
+        self.cfg = config
+        self.sigma = config.TRAIN.TRANSFORM_PARAMS.sigma
+        self.stride = config.TRAIN.TRANSFORM_PARAMS.stride
 
     def __len__(self):
         return len(self.baseDataSet)
@@ -30,7 +33,7 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
             image, bboxes, keypoints, availability = self.transforms(image, bboxes, keypoints, availability)
         joints = np.concatenate([keypoints, availability[:, :, np.newaxis]], axis=2)
 
-        heatmap = mobula.op.HeatGen[np.ndarray]()(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
+        heatmap = mobula.op.HeatGen[np.ndarray](self.stride, self.sigma)(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
         limb_sequence = self.baseDataSet.skeleton;
         pafmap = mobula.op.PAFGen[np.ndarray](limb_sequence)(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
         heatmap_mask = self.genHeatmapMask(joints.astype(np.float32), heatmap)
