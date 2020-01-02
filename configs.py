@@ -12,11 +12,11 @@ def get_coco_config():
     config.TRAIN.lr = 4e-5
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0001
-    config.TRAIN.lr_step = [8, 12, 16]
+    config.TRAIN.lr_step = [16, 26, 39]
     config.TRAIN.warmup_step = 1000
     config.TRAIN.gamma = 1.0 / 3
     config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
-    config.TRAIN.end_epoch = 26
+    config.TRAIN.end_epoch = 60
     config.TRAIN.resume = None
     config.TRAIN.DATASET = easydict.EasyDict()
     config.TRAIN.DATASET.coco_root = "/data3/zyx/yks/dataset/coco2017"

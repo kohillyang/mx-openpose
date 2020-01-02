@@ -214,13 +214,17 @@ if __name__ == '__main__':
             for i in range(6):
                 metric_dict["stage{}_heat".format(i)].update(None, losses_dict["stage_{}_heat".format(i)] / number_image_per_gpu)
                 metric_dict["stage{}_paf".format(i)].update(None, losses_dict["stage_{}_paf".format(i)] / number_image_per_gpu)
+
             if batch_cnt % 10 == 0:
                 msg = ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
                 msg += ",lr={}".format(trainer.learning_rate)
                 logging.info(msg)
                 eval_metrics.reset()
+
         save_path = "{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, 0.0)
         net.collect_params().save(save_path)
         logging.info("Saved checkpoint to {}".format(save_path))
-        trainer.save_states(config.TRAIN.model_prefix + "-trainer.states")
+        trainer_path = save_path + "-trainer.states"
+        trainer.save_states(trainer_path)
+
 
