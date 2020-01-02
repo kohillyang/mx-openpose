@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+sys.path.append("MobulaOP")
 import tqdm
 import easydict
 import matplotlib.pyplot as plt
@@ -17,8 +18,8 @@ from models.cpm import CPMNet
 from models.cpm import CPMVGGNet
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
-
-
+from configs import get_coco_config
+import datasets.pose_transforms as transforms
 
 def padRightDownCorner(img, stride, padValue):
     h = img.shape[0]
@@ -260,65 +261,125 @@ def pad_image(img_ori, dshape=(368, 368)):
     image_padded, pad = padRightDownCorner(img_resized, 8, 128)
     return img_resized, image_padded, pad, fscale
 
+def compute_coco_score(config):
+    pass
 
 if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
+    dshape = (512, 512)
     ctx_list = [mx.gpu(0)]
-    baseDataSet = COCOKeyPoints(root="/data/coco", splits=("person_keypoints_val2017",))
-    val_dataset = PafHeatMapDataSet(baseDataSet, lambda x:x)
+    config = get_coco_config()
+    baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_val2017",))
+    val_transform = transforms.Compose([transforms.ImagePad(dshape)])
+    val_dataset = PafHeatMapDataSet(baseDataSet, config, val_transform)
     number_of_keypoints = val_dataset.number_of_keypoints
-    # net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
-    # sym, _, _ = mx.model.load_checkpoint('pretrained/pose', 0)
-    # net = CPMVGGNet(resize=True)
-    # net.collect_params().load("pretrained/pose-0000.params")
-    net = CPMNet(19, 19, resize=True)
-    net.collect_params().load("output/gcn/resnet50-cpm-teachered-cropped-11-0.0.params")
-    net.collect_params().reset_ctx(ctx_list)
     results = []
     image_ids = []
-    annFile = '/data/coco/annotations/person_keypoints_val2017.json'
+    annFile = os.path.join(config.TRAIN.DATASET.coco_root, 'annotations/person_keypoints_val2017.json')
     cocoGt = COCO(annFile)
     cats = cocoGt.loadCats(cocoGt.getCatIds())
     catIds = cocoGt.getCatIds(catNms=['person'])
-    imgIds = cocoGt.getImgIds(catIds=catIds)
+    # imgIds = cocoGt.getImgIds(catIds=catIds)
+
+    # # net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
+    # # sym, _, _ = mx.model.load_checkpoint('pretrained/pose', 0)
+    # net = CPMVGGNet(resize=True)
+    # net.collect_params().load("pretrained/pose-0000.params")
+    net = CPMNet(19, 19, resize=True)
+    net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-11-0.0.params")
+    net.collect_params().reset_ctx(ctx_list)
 
     for i in tqdm.tqdm(range(min(len(val_dataset), 50))):
-        # da = val_dataset[i]
-        # image_id = val_dataset.baseDataSet[i][3]
-        # image_path = val_dataset.baseDataSet[i][0]
+        image_id = val_dataset.baseDataSet[i][3]
+        image_path = val_dataset.baseDataSet[i][0]
+        image_ori = cv2.imread(image_path)[:, :, ::-1]
+        image, heatmap, heatmap_mask, pafmap, pafmap_mask = val_dataset[i]
+        fscale = min(dshape[0] / image_ori.shape[0], dshape[1] / image_ori.shape[1])
 
-        img = cocoGt.loadImgs(imgIds[i])[0]
-        image_path = '/data/coco/val2017/' + img['file_name']
-        image_id = img['id']
-        image_ids.append(image_id)
-        cimgRGB = cv2.imread(image_path)[:, :, ::-1]
-        cscale = 1.0
-        imageToTest = cv2.resize(cimgRGB, (0, 0), fx=cscale, fy=cscale, interpolation=cv2.INTER_CUBIC)
+        heatmap = cv2.resize(np.transpose(heatmap, (1, 2, 0)), (image.shape[1], image.shape[0]), interpolation=cv2.INTER_CUBIC)
+        pafmap = cv2.resize(np.transpose(pafmap, (1, 2, 0)), (image.shape[1], image.shape[0]), interpolation=cv2.INTER_CUBIC)
+        # print(fscale)
+        # r = parse_heatpaf(image, heatmap, pafmap,  val_dataset.baseDataSet.skeleton,
+        #                   image_id=image_id, fscale=fscale)
+        # for i in range(heatmap.shape[2]):
+        #     plt.imshow(heatmap[:, :, i])
+        #     plt.savefig("output/compare/h_{}_{}_heatmap.png".format(image_id, i))
+        # for i in range(pafmap.shape[2]):
+        #     plt.imshow(pafmap[:, :, i])
+        #     # plt.savefig("output/compare/p_{}_{}_pafmap.png".format(image_id, i))
+        #     plt.show()
+        # plt.imshow(image)
+        # plt.savefig("output/compare/{}.png".format(image_id))
 
-        imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
-
-        result = net(mx.nd.array(imageToTest_padded[np.newaxis]).as_in_context(ctx_list[0]))
-
+        result = net(mx.nd.array(image[np.newaxis]).as_in_context(ctx_list[0]))
         heatmap = np.moveaxis(result[-1].asnumpy()[0], 0, -1)
-        heatmap = heatmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
-        pagmap = np.moveaxis(result[-2].asnumpy()[0], 0, -1)
-        pagmap = pagmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
+        pafmap = np.moveaxis(result[-2].asnumpy()[0], 0, -1)
 
-        # plt.imshow(heatmap[:, :, :-1].max(axis=2))
-        # plt.figure()
-        # plt.imshow(cimgRGB)
-        # plt.show()
-        # import time
-        # t0 = time.time()
-        r = parse_heatpaf(cimgRGB, heatmap, pagmap , val_dataset.baseDataSet.skeleton,
-                          image_id=image_id, fscale=cscale)
+        # for i in range(heatmap.shape[2]):
+        #     plt.imshow(heatmap[:, :, i])
+        #     plt.savefig("output/compare0/h_{}_{}_heatmap.png".format(image_id, i))
+        # for i in range(pagmap.shape[2]):
+        #     plt.imshow(pagmap[:, :, i])
+        #     plt.savefig("output/compare0/p_{}_{}_pafmap.png".format(image_id, i))
+        # plt.imshow(image.astype(np.uint8))
+        # plt.savefig("output/compare0/{}.png".format(image_id))
+        # print("saved")
+        # exit()
         # print(time.time() - t0)
+        r = parse_heatpaf(image, heatmap, pafmap, val_dataset.baseDataSet.skeleton,
+                          image_id=image_id, fscale=fscale)
         results.extend(r)
+        image_ids.append(image_id)
+
+    #
+    # for i in tqdm.tqdm(range(min(len(val_dataset), 50))):
+    #     image, heatmap, heatmap_mask, pafmap, pafmap_mask = val_dataset[i]
+    #     image_id = val_dataset.baseDataSet[i][3]
+    #     image_path = val_dataset.baseDataSet[i][0]
+    #
+    #     img = cocoGt.loadImgs(image_id)[0]
+    #     image_path = '/data3/zyx/yks/dataset/coco2017/val2017/' + img['file_name']
+    #     # image_path = "figures/test2.jpg"
+    #     image_id = img['id']
+    #     image_ids.append(image_id)
+    #     cimgRGB = cv2.imread(image_path)[:, :, ::-1]
+    #     cscale = 1.0
+    #     imageToTest = cv2.resize(cimgRGB, (0, 0), fx=cscale, fy=cscale, interpolation=cv2.INTER_CUBIC)
+    #
+    #     imageToTest_padded, pad = padRightDownCorner(imageToTest, 8, 128)
+    #
+    #     result = net(mx.nd.array(imageToTest_padded[np.newaxis]).as_in_context(ctx_list[0]))
+    #
+    #     heatmap = np.moveaxis(result[-1].asnumpy()[0], 0, -1)
+    #     heatmap = heatmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
+    #     pagmap = np.moveaxis(result[-2].asnumpy()[0], 0, -1)
+    #     pagmap = pagmap[:imageToTest_padded.shape[0] - pad[2], :imageToTest_padded.shape[1] - pad[3], :]
+    #
+    #     # for i in range(heatmap.shape[2]):
+    #     #     plt.imshow(heatmap[:, :, i])
+    #     #     plt.savefig("output/compare/{}_{}_heatmap.png".format(image_id, i))
+    #     # for i in range(pagmap.shape[2]):
+    #     #     plt.imshow(pagmap[:, :, i])
+    #     #     plt.savefig("output/compare/{}_{}_pafmap.png".format(image_id, i))
+    #     # plt.imshow(cimgRGB)
+    #     # plt.savefig("output/compare/{}.png".format(image_id))
+    #     # print("save finished.")
+    #     # exit()
+    #     # plt.imshow(pagmap[:, :, :-1].max(axis=2))
+    #     # plt.figure()
+    #     # plt.imshow(cimgRGB)
+    #     # plt.show()
+    #     # import time
+    #     # t0 = time.time()
+    #     r = parse_heatpaf(cimgRGB, heatmap, pagmap , val_dataset.baseDataSet.skeleton,
+    #                       image_id=image_id, fscale=cscale)
+    #     # print(time.time() - t0)
+    #     results.extend(r)
 
     annType = ['segm','bbox','keypoints']
     annType = annType[2]      #specify type here
     prefix = 'person_keypoints' if annType=='keypoints' else 'instances'
-    annFile = '/data/coco/annotations/person_keypoints_val2017.json'
+    annFile = '/data3/zyx/yks/dataset/coco2017/annotations/person_keypoints_val2017.json'
     cocoGt = COCO(annFile)
     cats = cocoGt.loadCats(cocoGt.getCatIds())
     catIds = cocoGt.getCatIds(catNms=['person'])
