@@ -19,6 +19,7 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         self.cfg = config
         self.sigma = config.TRAIN.TRANSFORM_PARAMS.sigma
         self.stride = config.TRAIN.TRANSFORM_PARAMS.stride
+        self.distance_threshold = config.TRAIN.TRANSFORM_PARAMS.distance_threshold
 
     def __len__(self):
         return len(self.baseDataSet)
@@ -26,18 +27,21 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
     def __getitem__(self, item):
         path, bboxes, joints, image_id = self.baseDataSet[item]
         image = cv2.imread(path)[:, :, ::-1]
+        image = image.astype(np.float32)
         keypoints = joints[:, :, :2]
         availability = np.logical_and(joints[:, :, 0] > 0, joints[:, :, 1] > 0)
         availability = availability.astype(np.float32)
         if self.transforms is not None:
             image, bboxes, keypoints, availability = self.transforms(image, bboxes, keypoints, availability)
         joints = np.concatenate([keypoints, availability[:, :, np.newaxis]], axis=2)
+        bboxes = bboxes.astype(np.float32)
+        joints = joints.astype(np.float32)
+        limb_sequence = self.baseDataSet.skeleton
 
-        heatmap = mobula.op.HeatGen[np.ndarray](self.stride, self.sigma)(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
-        limb_sequence = self.baseDataSet.skeleton;
-        pafmap = mobula.op.PAFGen[np.ndarray](limb_sequence)(image.astype(np.float32), bboxes.astype(np.float32), joints.astype(np.float32))
-        heatmap_mask = self.genHeatmapMask(joints.astype(np.float32), heatmap)
-        pafmap_mask = self.genPafmapMask(limb_sequence, joints.astype(np.float32), pafmap)
+        heatmap = mobula.op.HeatGen[np.ndarray](self.stride, self.sigma)(image, bboxes, joints)
+        pafmap = mobula.op.PAFGen[np.ndarray](limb_sequence, self.stride, self.distance_threshold)(image, bboxes, joints)
+        heatmap_mask = self.genHeatmapMask(joints, heatmap)
+        pafmap_mask = self.genPafmapMask(limb_sequence, joints, pafmap)
         return image, heatmap, heatmap_mask, pafmap, pafmap_mask
 
     def genHeatmapMask(self, joints, heatmaps):

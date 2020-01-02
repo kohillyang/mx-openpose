@@ -108,7 +108,9 @@ if __name__ == '__main__':
     ctx = ctx if ctx else [mx.cpu()]
 
     train_transform = transforms.Compose([transforms.RandomScale(config),
-                                          transforms.RandomCenterCrop(config)])
+                                          transforms.RandomRotate(config),
+                                          transforms.RandomCenterCrop(config),
+                                          ])
 
     baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, config, train_transform)
@@ -122,10 +124,10 @@ if __name__ == '__main__':
     #
     #     for j in range(heatmap.shape[0]):
     #         plt.imshow(heatmap[j])
-    #         plt.savefig("output/figures/{}_{}_heatmap.jpg".format(i, j))
+    #         plt.savefig("output/figures/h{}_{}_heatmap.jpg".format(i, j))
     #     for j in range(pf.shape[0]):
     #         plt.imshow(pf[j])
-    #         plt.savefig("output/figures/{}_{}_pafmap.jpg".format(i, j))
+    #         plt.savefig("output/figures/p{}_{}_pafmap.jpg".format(i, j))
     #     plt.close()
     # exit()
 

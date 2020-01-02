@@ -7,7 +7,7 @@ import numpy as np
 
 @mobula.op.register
 class PAFGen:
-    def __init__(self, limb_sequence, stride=8, distance_threshold=1):
+    def __init__(self, limb_sequence, stride, distance_threshold):
         self.stride = stride
         self.distance_threshold = distance_threshold
         self.limb_sequence = limb_sequence

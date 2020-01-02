@@ -230,3 +230,67 @@ class RandomCenterCrop(object):
                     availability[m, n] = 0
 
         return image_cropped_padded, bboxes, keypoints, availability
+
+
+def rotate_bound(image, kp, angle):
+    # grab the dimensions of the image and then determine the
+    # center
+    h, w = image.shape[:2]
+
+    kp_new = np.empty(shape=(len(kp), 3), dtype=np.float32)
+    kp_new[:, 0] = kp[:, 0]
+    kp_new[:, 1] = kp[:, 1]
+    kp_new[:, 2] = 1
+
+    (cX, cY) = (w // 2, h // 2)
+
+    M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
+    cos = np.abs(M[0, 0])
+    sin = np.abs(M[0, 1])
+
+    # compute the new bounding dimensions of the image
+    nW = int((h * sin) + (w * cos))
+    nH = int((h * cos) + (w * sin))
+
+    # adjust the rotation matrix to take into account translation
+    M[0, 2] += (nW / 2) - cX
+    M[1, 2] += (nH / 2) - cY
+    rotated = cv2.warpAffine(image, M, (nW, nH))
+
+    return rotated, np.dot(kp_new, M.T), M
+
+
+class RandomRotate(object):
+    def __init__(self, config):
+        self.min_angle = -1 * config.TRAIN.TRANSFORM_PARAMS.max_rotation_degree
+        self.max_angle = config.TRAIN.TRANSFORM_PARAMS.max_rotation_degree
+
+    def __call__(self, img_ori, bbox, keypoints, availability):
+        assert bbox.shape.__len__() == 2
+        assert bbox.shape[1] == 4
+        assert keypoints.shape.__len__() == 3
+        assert keypoints.shape[2] == 2
+        assert availability.shape.__len__() == 2
+
+        # rotate bbox and image
+        kps = np.empty(shape=(len(bbox), 4, 2), dtype=np.float32)
+        kps[:, 0, :] = bbox[:, (0, 1)]
+        kps[:, 1, :] = bbox[:, (2, 1)]
+        kps[:, 2, :] = bbox[:, (2, 3)]
+        kps[:, 3, :] = bbox[:, (0, 3)]
+
+        angle = np.random.uniform(self.min_angle, self.max_angle)
+        image_rotated, kps_rotated, M = rotate_bound(img_ori, kps.reshape((-1, 2)), angle)
+        kps_rotated = kps_rotated.reshape(kps.shape)
+        bbox_rotated = np.zeros_like(bbox)
+        bbox_rotated[:, 0] = kps_rotated[:, :, 0].min(axis=1)
+        bbox_rotated[:, 1] = kps_rotated[:, :, 1].min(axis=1)
+        bbox_rotated[:, 2] = kps_rotated[:, :, 0].max(axis=1)
+        bbox_rotated[:, 3] = kps_rotated[:, :, 1].max(axis=1)
+
+        # rotate keypoints
+        keypoints_reshapped = keypoints.reshape(-1, 2)
+        keypoints_homo = np.ones(shape=(keypoints_reshapped.shape[0], 3))
+        keypoints_homo[:, :2] = keypoints_reshapped
+        keypoints_rotated = keypoints_homo.dot(M.T)
+        return image_rotated, bbox_rotated, keypoints_rotated.reshape(keypoints.shape), availability
