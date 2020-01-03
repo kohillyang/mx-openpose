@@ -1,15 +1,14 @@
 import cv2
 import os
-from datasets.pose_transforms import PafHeatMapBaseDataSet
 import numpy as np
 import mxnet as mx
 import mobula
 import matplotlib.pyplot as plt
 
 
-class PafHeatMapDataSet(PafHeatMapBaseDataSet):
+class PafHeatMapDataSet(object):
     def __init__(self, base_dataset, config, transforms=None):
-        super(PafHeatMapDataSet, self).__init__(base_dataset.skeleton[:, 0], base_dataset.skeleton[:, 1])
+        super(PafHeatMapDataSet, self).__init__()
         self.baseDataSet = base_dataset
         self.transforms = transforms
         self.number_of_keypoints = self.baseDataSet.number_of_keypoints
@@ -31,8 +30,17 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
         keypoints = joints[:, :, :2]
         availability = np.logical_and(joints[:, :, 0] > 0, joints[:, :, 1] > 0)
         availability = availability.astype(np.float32)
+
+        bbox_idx = 0  # 0 if transforms is None
         if self.transforms is not None:
-            image, bboxes, keypoints, availability = self.transforms(image, bboxes, keypoints, availability)
+            data_dict = {"image": image, "bboxes": bboxes, "keypoints":keypoints, "availability":availability}
+            data_dict = self.transforms(data_dict)
+            bbox_idx = data_dict["crop_bbox_idx"]
+            image = data_dict["image"]
+            bboxes = data_dict["bboxes"]
+            keypoints = data_dict["keypoints"]
+            availability = data_dict["availability"]
+
         joints = np.concatenate([keypoints, availability[:, :, np.newaxis]], axis=2)
         bboxes = bboxes.astype(np.float32)
         joints = joints.astype(np.float32)
@@ -40,26 +48,24 @@ class PafHeatMapDataSet(PafHeatMapBaseDataSet):
 
         heatmap = mobula.op.HeatGen[np.ndarray](self.stride, self.sigma)(image, bboxes, joints)
         pafmap = mobula.op.PAFGen[np.ndarray](limb_sequence, self.stride, self.distance_threshold)(image, bboxes, joints)
-        heatmap_mask = self.genHeatmapMask(joints, heatmap)
-        pafmap_mask = self.genPafmapMask(limb_sequence, joints, pafmap)
+        heatmap_mask = self.genHeatmapMask(joints, heatmap, bbox_idx)
+        pafmap_mask = self.genPafmapMask(limb_sequence, joints, pafmap, bbox_idx)
         return image, heatmap, heatmap_mask, pafmap, pafmap_mask
 
-    def genHeatmapMask(self, joints, heatmaps):
+    def genHeatmapMask(self, joints, heatmaps, bbox_idx):
         mask = np.ones_like(heatmaps)
-        for i in range(len(joints)):
-            for j in range(len(joints[0])):
-                if joints[i, j, 2] > 0:
-                    pass
-                else:
-                    mask[j][:] = 0
+        for j in range(len(joints[0])):
+            if joints[bbox_idx, j, 2] > 0:
+                pass
+            else:
+                mask[j][:] = 0
         return mask
 
-    def genPafmapMask(self, limb_sequence, joints, pafmaps):
+    def genPafmapMask(self, limb_sequence, joints, pafmaps, bbox_idx):
         mask = np.ones_like(pafmaps)
-        for i in range(len(joints)):
-            for j in range(len(limb_sequence)):
-                if joints[i, limb_sequence[j, 0], 2] > 0 and joints[i, limb_sequence[j, 1], 2] > 0:
-                    pass
-                else:
-                    mask[j][:] = 0
+        for j in range(len(limb_sequence)):
+            if joints[bbox_idx, limb_sequence[j, 0], 2] > 0 and joints[bbox_idx, limb_sequence[j, 1], 2] > 0:
+                pass
+            else:
+                mask[j][:] = 0
         return mask
