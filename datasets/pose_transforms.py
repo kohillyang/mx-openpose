@@ -294,3 +294,28 @@ class RandomRotate(object):
         keypoints_homo[:, :2] = keypoints_reshapped
         keypoints_rotated = keypoints_homo.dot(M.T)
         return image_rotated, bbox_rotated, keypoints_rotated.reshape(keypoints.shape), availability
+
+
+class RandomFlip(object):
+    def __init__(self, flip_indices):
+        self.flip_indices = flip_indices
+
+    def __call__(self, img_ori, bbox, keypoints, availability):
+        assert bbox.shape.__len__() == 2
+        assert bbox.shape[1] == 4
+        assert keypoints.shape.__len__() == 3
+        assert keypoints.shape[2] == 2
+        assert availability.shape.__len__() == 2
+
+        if np.random.randint(0, 2):
+            h, w, c = img_ori.shape
+            img_flipped = img_ori[:, ::-1, :].copy()
+            bbox_flipped = bbox.copy()
+            keypoints_flipped = keypoints.copy()
+            bbox_flipped[:, (0, 2)] = w - 1 - bbox[:, (2, 0)]
+            keypoints_flipped[:, :, 0] = w - 1 - keypoints[:, :, 0]
+            keypoints_flipped = keypoints_flipped[:, self.flip_indices]
+            availability_flipped = availability[:, self.flip_indices]
+            return img_flipped, bbox_flipped, keypoints_flipped, availability_flipped
+        else:
+            return img_ori, bbox, keypoints, availability

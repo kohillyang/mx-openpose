@@ -95,7 +95,7 @@ if __name__ == '__main__':
     os.environ["MXNET_USE_FUSION"]="0"
     from configs import get_coco_config
     config = get_coco_config()
-    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-resnet-cropped")
+    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-resnet-cropped-flipped_rotated")
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))
@@ -107,12 +107,14 @@ if __name__ == '__main__':
     ctx = [mx.gpu(int(i)) for i in config.TRAIN.gpus]
     ctx = ctx if ctx else [mx.cpu()]
 
-    train_transform = transforms.Compose([transforms.RandomScale(config),
+    baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
+    train_transform = transforms.Compose([
+                                          transforms.RandomScale(config),
                                           transforms.RandomRotate(config),
                                           transforms.RandomCenterCrop(config),
+                                          transforms.RandomFlip(baseDataSet.flip_indices)
                                           ])
 
-    baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
     train_dataset = PafHeatMapDataSet(baseDataSet, config, train_transform)
 
     # import matplotlib.pyplot as plt

@@ -272,6 +272,8 @@ class COCOKeyPoints(object):
                    [15, 17]]
         self.skeleton = np.array(limbSeq)
         self.number_of_keypoints = 19
+        self.flip_indices = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+        self.flip_indices = [0, 1, 5, 6, 7, 2, 3, 4, 11, 12, 13, 8, 9, 10, 15, 14, 17, 16]
 
     def __getitem__(self, item):
         obj = self.objs[self.image_ids[item]]
