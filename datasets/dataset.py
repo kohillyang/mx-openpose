@@ -35,7 +35,7 @@ class PafHeatMapDataSet(object):
         if self.transforms is not None:
             data_dict = {"image": image, "bboxes": bboxes, "keypoints":keypoints, "availability":availability}
             data_dict = self.transforms(data_dict)
-            bbox_idx = data_dict["crop_bbox_idx"]
+            bbox_idx = data_dict["crop_bbox_idx"] if "crop_bbox_idx" in data_dict else bbox_idx
             image = data_dict["image"]
             bboxes = data_dict["bboxes"]
             keypoints = data_dict["keypoints"]
