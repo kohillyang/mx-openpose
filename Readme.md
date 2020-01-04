@@ -13,7 +13,7 @@ After you have trained your own model or download the pretrained model, you can 
 # Results on val 2017
 
 The following is the results after 17 epochs on the first 50 images of val2017, the mAP(single scale) is 0.282,
-lower than the original model(0.380). I tried my best to find the reasons but I failed, please contact
+lower than the original model(0.340). I tried my best to find the reasons but I failed, please contact
 me if you have any ideas.
 
 ```bash
@@ -27,4 +27,18 @@ me if you have any ideas.
  Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.326
  0Av0e0rage Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.207
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.536
+```
+
+Single scale mAP of the original model:
+```
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.341
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.648
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.324
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.242
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.482
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.399
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.680
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.394
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.250
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.614
 ```
