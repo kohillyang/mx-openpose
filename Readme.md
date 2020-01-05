@@ -12,7 +12,7 @@ After you have trained your own model or download the pretrained model, you can 
 
 # Results on val 2017
 
-Using three scales and no flipping, the following is the results, the mAP of the implementation after 24 epochs
+Using three scales and no flipping, the following is the results, the mAP of this implementation after 24 epochs
 on the first 50 images of val2017 is 0.396 lower than the original model(0.438).
 I tried my best to find the reasons but I failed, please contact me if you have any ideas.
 
