@@ -19,7 +19,7 @@ def get_coco_config():
     config.TRAIN.end_epoch = 60
     config.TRAIN.resume = None
     config.TRAIN.DATASET = easydict.EasyDict()
-    config.TRAIN.DATASET.coco_root = "/data3/zyx/yks/dataset/coco2017"
+    config.TRAIN.DATASET.coco_root = "/data1/coco/"
     config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
 
     # params for random cropping
