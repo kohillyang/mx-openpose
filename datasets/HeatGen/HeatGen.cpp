@@ -1,5 +1,5 @@
 /*
- * Adapted from caffe2: github.com/caffe2/caffe2
+ * author: kohill
  */
 #include "bilinear.h"
 #include "mobula_op.h"

@@ -1,5 +1,5 @@
 /*
- * Adapted from caffe2: github.com/caffe2/caffe2
+ * author: kohill
  */
 #include "bilinear.h"
 #include "mobula_op.h"
@@ -68,8 +68,8 @@ public:
 
 template <typename T, typename T_index>
 MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_index *limbs, const T_index number_of_parts,
-                                     const T_index number_of_limbs, const T_index image_width,
-                                     const T_index image_height, T* p_subsets_out) {
+                                     const T_index number_of_limbs, const T_index image_width, const T_index image_height,
+                                     const T_index max_person_number, T* p_subsets_out) {
     const T threshold1 = .1;
     const T threshold2 = 0.05;
     const T mid_num = 10;
@@ -242,13 +242,19 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
     }
     UNUSED(p_subsets_out);
     // copy
-    for(size_t i=0; i< subsets.size(); i++){
-        for(int j=0; j < number_of_parts; j ++){
-            p_subsets_out[i * (number_of_parts + 2) + j] = subsets[i][j];
+    for(int i=0; i< std::min(static_cast<int>(subsets.size()), static_cast<int>(max_person_number)); i++){
+        if(subsets[i][-1] >= 3 || subsets[i].score / subsets[i][-1] >= .2){
+            for(int j=0; j < number_of_parts; j ++){
+                int part = subsets[i][j];
+                if(part >= 0){
+                    float x = heatPeaks_flatten[part].x;
+                    float y = heatPeaks_flatten[part].y;
+                    p_subsets_out[i * number_of_parts * 2 + j * 2 + 0] = x;
+                    p_subsets_out[i * number_of_parts * 2 + j * 2 + 1] = y;
+                }
+            }
         }
-        p_subsets_out[i * (number_of_parts + 2) + number_of_parts + 0] = .0f;
-        p_subsets_out[i * (number_of_parts + 2) + number_of_parts + 1] = subsets[i][-1];
-    }
+    } // copy
 } // paf_gen_kernel
 
 
