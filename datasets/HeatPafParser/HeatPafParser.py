@@ -16,6 +16,7 @@ class HeatPafParser:
             return
         out = self.y
         number_of_parts, h0, w0 = heatmap.shape
+        number_of_parts -= 1  # one channel for background
         if self.req[0] == req.add:
             out_temp = self.F.zeros_like(out)
             # (const T * p_heat, const T * p_paf, const T_index * limbs, const T_index number_of_parts,
