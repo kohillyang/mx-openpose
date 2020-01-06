@@ -18,3 +18,8 @@ pretrained/
 datasets/HeatGen/build
 datasets/PAFGen/build
 datasets/HeatPafParser/build
+.cproject
+
+.project
+
+.settings/
