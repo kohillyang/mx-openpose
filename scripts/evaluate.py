@@ -2,6 +2,7 @@ import cv2
 import json
 import os
 import sys
+import time
 
 import mxnet as mx
 import numpy as np
@@ -11,7 +12,7 @@ from pycocotools.cocoeval import COCOeval
 
 from configs import get_coco_config
 from datasets.cocodatasets import COCOKeyPoints
-from models.cpm import CPMVGGNet
+from models.cpm import CPMVGGNet, CPMNet
 
 sys.path.append("MobulaOP")
 from utils.heatpaf_parser import parse_heatpaf_py, parse_heatpaf_cxx
@@ -22,7 +23,7 @@ if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
 
     mobula.op.load('HeatPafParser', os.path.join(os.path.dirname(__file__), "../utils/operator_cxx"))
-    ctx_list = [mx.gpu(0)]
+    ctx_list = [mx.gpu(8)]
     config = get_coco_config()
     baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_val2017",))
     results = []
@@ -34,14 +35,17 @@ if __name__ == '__main__':
     catIds = cocoGt.getCatIds(catNms=['person'])
     imgIds = cocoGt.getImgIds(catIds=catIds)
 
-    net = CPMVGGNet(resize=False)
-    net.collect_params().load("pretrained/pose-0000.params")
+    # net = CPMVGGNet(resize=False)
+    # net.collect_params().load("pretrained/pose-0000.params")
 
-    # net = CPMNet(19, 19, resize=False)
-    # net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
+    net = CPMNet(19, 19, resize=False)
+    net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
+    # print("CPMNet")
+    net.hybridize()
+
     net.collect_params().reset_ctx(ctx_list)
 
-    for i in tqdm.trange(len(imgIds)):
+    for i in tqdm.tqdm(range(len(imgIds))):
         image_id = imgIds[i]
         img = cocoGt.loadImgs(image_id)[0]
         image_path = os.path.join(image_dir, img['file_name'])
@@ -75,7 +79,9 @@ if __name__ == '__main__':
         pafmap_mean = np.mean(pafmaps, axis=0)
 
         if config.VAL.USE_CXX_HEATPAF_PARSER:
-            r = parse_heatpaf_cxx(heatmap_mean.astype(np.float64), pafmap_mean.astype(np.float64), limbSeq, image_id)
+            from scipy.ndimage.filters import gaussian_filter
+            heatmap_mean = gaussian_filter(heatmap_mean, sigma=3)
+            r = parse_heatpaf_cxx(heatmap_mean.transpose((2, 0, 1)), pafmap_mean.transpose((2, 0, 1)), baseDataSet.skeleton, image_id)
         else:
             r = parse_heatpaf_py(image_ori, heatmap_mean, pafmap_mean, baseDataSet.skeleton, image_id)
         results.extend(r)
@@ -88,9 +94,9 @@ if __name__ == '__main__':
     catIds = cocoGt.getCatIds(catNms=['person'])
     imgIds = cocoGt.getImgIds(catIds=catIds)
 
-    with open('evaluationResult.json', 'w') as outfile:
+    resJsonFile = 'output/evaluationResult{}.json'.format(time.time())
+    with open(resJsonFile, 'w') as outfile:
         json.dump(results, outfile)
-    resJsonFile = 'evaluationResult.json'
     cocoDt2 = cocoGt.loadRes(resJsonFile)
 
     # running evaluation
