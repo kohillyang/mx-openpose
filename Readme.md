@@ -45,3 +45,6 @@ mAP of the original model:
  Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.582
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.699
 ```
+
+
+The original pretrained model converted from Caffe can be downloaded from <http://pan.baidu.com/s/1gf3YHvP>, password is `x5tn`, which is bought from [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>.
