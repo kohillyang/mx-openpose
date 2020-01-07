@@ -18,34 +18,30 @@ After you have trained your own model or download the pretrained model, you can 
 
 
 # Results on val 2017
-
-Using three scales and no flipping, the following is the results, the mAP of this implementation after 24 epochs
-on the first 50 images of val2017 is 0.396 lower than the original model(0.438).
-I tried my best to find the reasons but I failed, please contact me if you have any ideas.
-
+Our implementation:
 ```bash
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.396
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.704
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.387
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.365
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.443
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.444
- Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.728
- Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.450
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.378
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.537
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.532
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.765
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.569
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.515
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.566
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.572
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.784
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.607
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.526
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.638
 ```
 
-Single scale mAP of the original model:
+mAP of the original model:
 ```
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.438
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.747
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.456
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.407
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.495
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.492
- Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.770
- Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.513
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.418
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.597
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.590
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.810
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.643
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.575
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.623
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.630
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.824
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.675
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.582
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.699
 ```
