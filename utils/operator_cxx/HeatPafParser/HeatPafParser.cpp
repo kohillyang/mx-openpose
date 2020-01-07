@@ -14,41 +14,43 @@ namespace mobula {
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 #include <cstdio>
-
+template <typename T>
 class HeatPeak{
     public:
     int x;
     int y;
-    float score;
+    T score;
     int peak_id;
-    HeatPeak(int x_, int y_, float score_, int peak_id_){
+    HeatPeak(int x_, int y_, T score_, int peak_id_){
         this->x = x_;
         this->y = y_;
         this->score = score_;
         this->peak_id = peak_id_;
     };
 };
+template <typename T>
 class ConnectionCandidate{
 public:
     int nA;
     int nB;
-    float score0;
-    float score1;
-    ConnectionCandidate(int nA_, int nB_, float score0_, float score1_){
+    T score0;
+    T score1;
+    ConnectionCandidate(int nA_, int nB_, T score0_, T score1_){
         this->nA = nA_;
         this->nB = nB_;
         this->score0 = score0_;
         this->score1 = score1_;
     }
 };
-
-bool f_compare_connection_candidates(const ConnectionCandidate &c0, const ConnectionCandidate &c1){
+template <typename T>
+bool f_compare_connection_candidates(const ConnectionCandidate<T> &c0, const ConnectionCandidate<T> &c1){
     return c0.score0 > c1.score0;
 }
+template <typename T>
 class SubSet{
 public:
     std::vector<int> parts;
-    float score = 0;
+    T score = 0;
     SubSet(size_t number_of_parts){
         this->parts.resize(number_of_parts + 2, -1);
     }
@@ -69,24 +71,23 @@ public:
 template <typename T, typename T_index>
 MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_index *limbs, const T_index number_of_parts,
                                      const T_index number_of_limbs, const T_index image_width, const T_index image_height,
-                                     const T_index max_person_number, T* p_subsets_out) {
+                                     const T_index max_person_number, T* p_keypoints_out, T* p_scores_out) {
     const T threshold1 = .1;
     const T threshold2 = 0.05;
     const T mid_num = 10;
     // find sub-max positions
-    std::vector<std::vector<HeatPeak>> heatPeaks;
+    std::vector<std::vector<HeatPeak<T>>> heatPeaks;
     for(int i=0, peak_counter=0; i< number_of_parts; i++){
-        // Escape the first and the last row/column.
-        heatPeaks.push_back(std::vector<HeatPeak>());
+        heatPeaks.push_back(std::vector<HeatPeak<T>>());
         const size_t channel_offset = i * (image_height * image_width);
-        for(int m=1; m < image_height-1; m ++){
-            for(int n=1; n < image_width-1; n++){
+        for(int m=0; m < image_height; m ++){
+            for(int n=0; n < image_width; n++){
                 auto currentValue = p_heat[ channel_offset + m * image_width + n ];
                 if(currentValue > threshold1){
-                    auto upValue = p_heat[ channel_offset + (m-1) * image_width + n ];
-                    auto bottomValue = p_heat[ channel_offset + (m+1) * image_width + n ];
-                    auto rightValue = p_heat[ channel_offset + m * image_width + (n + 1) ];
-                    auto leftValue = p_heat[ channel_offset + m * image_width + (n - 1) ];
+                    auto upValue = m==0 ? 0 : p_heat[ channel_offset + (m-1) * image_width + n ];
+                    auto bottomValue = m==(image_height-1) ? 0 : p_heat[ channel_offset + (m+1) * image_width + n ];
+                    auto rightValue = n==(image_width - 1) ? 0 : p_heat[ channel_offset + m * image_width + (n + 1) ];
+                    auto leftValue = n==0? 0 : p_heat[ channel_offset + m * image_width + (n - 1) ];
                     if(currentValue >= upValue && currentValue >= bottomValue
                         && currentValue >= leftValue && currentValue >= rightValue){
                         heatPeaks[i].emplace_back(n, m, currentValue, peak_counter);
@@ -103,14 +104,14 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
         size_t indexB = limbs[i * 2 + 1];
         const T *p_score_mid_x = p_paf + (i * 2 + 0) * image_height * image_width;
         const T *p_score_mid_y = p_paf + (i * 2 + 1) * image_height * image_width;
-        auto connection_candidates = std::vector<ConnectionCandidate>();
+        auto connection_candidates = std::vector<ConnectionCandidate<T>>();
         for(size_t nA = 0; nA < heatPeaks[indexA].size(); nA ++){
             for(size_t nB=0; nB < heatPeaks[indexB].size(); nB ++){
                 auto& p0 = heatPeaks[indexA][nA];
                 auto& p1 = heatPeaks[indexB][nB];
-                float vec_x = p1.x - p0.x;
-                float vec_y = p1.y - p0.y;
-                float norm = std::sqrt(vec_x * vec_x + vec_y *vec_y);
+                T vec_x = p1.x - p0.x;
+                T vec_y = p1.y - p0.y;
+                T norm = std::sqrt(vec_x * vec_x + vec_y *vec_y);
                 if(norm < 0.1){
                     norm += 1;
 //                    std::puts("norm is too small, adding one to avoid NAN.");
@@ -143,7 +144,7 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
         // Remove redundant connections
         // Sort all candidates according to score0
         std::vector<std::tuple<int, int, T, size_t, size_t>> connections;
-        std::sort(connection_candidates.begin(), connection_candidates.end(), f_compare_connection_candidates);
+        std::sort(connection_candidates.begin(), connection_candidates.end(), f_compare_connection_candidates<T>);
         for(size_t nc=0; nc < connection_candidates.size(); nc ++){
             auto &nA = connection_candidates[nc].nA;
             auto &nB = connection_candidates[nc].nB;
@@ -165,14 +166,14 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
         connection_all.push_back(connections);
     }
 
-    std::vector<HeatPeak> heatPeaks_flatten;
+    std::vector<HeatPeak<T>> heatPeaks_flatten;
     for(auto &ca:heatPeaks){
         for(auto &c: ca){
         	heatPeaks_flatten.push_back(c);
         }
     }
     // parts connected with each other should be merged.
-    std::vector<SubSet> subsets;
+    std::vector<SubSet<T>> subsets;
     for(int k=0; k< number_of_limbs; k++){
         size_t indexA = limbs[k * 2 + 0];
         size_t indexB = limbs[k * 2 + 1];
@@ -229,7 +230,7 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
                 }
             }else if(found ==0){
                 // if find no partA in the subset, create a new subset
-            	auto row = SubSet(number_of_parts);
+            	auto row = SubSet<T>(number_of_parts);
             	int partA = std::get<0>(connection_all[k][i]);
             	int partB = std::get<1>(connection_all[k][i]);
             	row[indexA] = partA;
@@ -240,19 +241,22 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
             }
         }
     }
-    UNUSED(p_subsets_out);
     // copy
     for(int i=0; i< std::min(static_cast<int>(subsets.size()), static_cast<int>(max_person_number)); i++){
-        if(subsets[i][-1] >= 3 || subsets[i].score / subsets[i][-1] >= .2){
+        if(subsets[i][-1] >= 3 && subsets[i].score / subsets[i][-1] >= .2){ //   // -1 is the number of available parts.
             for(int j=0; j < number_of_parts; j ++){
                 int part = subsets[i][j];
                 if(part >= 0){
-                    float x = heatPeaks_flatten[part].x;
-                    float y = heatPeaks_flatten[part].y;
-                    p_subsets_out[i * number_of_parts * 2 + j * 2 + 0] = x;
-                    p_subsets_out[i * number_of_parts * 2 + j * 2 + 1] = y;
+                    T x = heatPeaks_flatten[part].x;
+                    T y = heatPeaks_flatten[part].y;
+                    p_keypoints_out[i * number_of_parts * 3 + j * 3 + 0] = x;
+                    p_keypoints_out[i * number_of_parts * 3 + j * 3 + 1] = y;
+                    p_keypoints_out[i * number_of_parts * 3 + j * 3 + 2] = 1;
+                }else{
+                    p_keypoints_out[i * number_of_parts * 3 + j * 3 + 2] = 0;
                 }
             }
+            p_scores_out[i] = subsets[i].score;
         }
     } // copy
 } // paf_gen_kernel
