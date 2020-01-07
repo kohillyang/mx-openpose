@@ -67,7 +67,7 @@ if __name__ == '__main__':
                [14, 16],
                [15, 17]]
     limbSeq = np.array(limbSeq)
-    mobula.op.load('HeatPafParser', os.path.join(os.path.dirname(__file__), "utils/operator_cxx"))
+    mobula.op.load('HeatPafParser', os.path.join(os.path.dirname(__file__), "../utils/operator_cxx"))
     dshape = (512, 512)
     ctx_list = [mx.cpu(0)]
     config = get_coco_config()
@@ -89,7 +89,7 @@ if __name__ == '__main__':
     # net = CPMVGGNet(resize=False)
     # net.collect_params().load("pretrained/pose-0000.params")
     net = CPMNet(19, 19, resize=False)
-    net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-30-0.0.params")
+    net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
 
     imgIds = cocoGt.getImgIds(catIds=catIds)

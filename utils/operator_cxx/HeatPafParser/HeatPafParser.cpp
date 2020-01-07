@@ -98,15 +98,15 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
             }
         }
     }
-    std::vector<std::vector<std::tuple<int, int, T, size_t, size_t>>> connection_all;
+    std::vector<std::vector<std::tuple<int, int, T, int, int>>> connection_all;
     for(int i=0; i< number_of_limbs; i++){
         size_t indexA = limbs[i * 2 + 0];
         size_t indexB = limbs[i * 2 + 1];
         const T *p_score_mid_x = p_paf + (i * 2 + 0) * image_height * image_width;
         const T *p_score_mid_y = p_paf + (i * 2 + 1) * image_height * image_width;
         auto connection_candidates = std::vector<ConnectionCandidate<T>>();
-        for(size_t nA = 0; nA < heatPeaks[indexA].size(); nA ++){
-            for(size_t nB=0; nB < heatPeaks[indexB].size(); nB ++){
+        for(int nA = 0; nA < static_cast<int>(heatPeaks[indexA].size()); nA ++){
+            for(int nB=0; nB < static_cast<int>(heatPeaks[indexB].size()); nB ++){
                 auto& p0 = heatPeaks[indexA][nA];
                 auto& p1 = heatPeaks[indexB][nB];
                 T vec_x = p1.x - p0.x;
@@ -143,9 +143,9 @@ MOBULA_KERNEL heat_paf_parser_kernel(const T* p_heat, const T* p_paf, const T_in
         } // End calculate scores of all possible connections;
         // Remove redundant connections
         // Sort all candidates according to score0
-        std::vector<std::tuple<int, int, T, size_t, size_t>> connections;
+        std::vector<std::tuple<int, int, T, int, int>> connections;
         std::sort(connection_candidates.begin(), connection_candidates.end(), f_compare_connection_candidates<T>);
-        for(size_t nc=0; nc < connection_candidates.size(); nc ++){
+        for(int nc=0; nc < static_cast<int>(connection_candidates.size()); nc ++){
             auto &nA = connection_candidates[nc].nA;
             auto &nB = connection_candidates[nc].nB;
             bool exist_flag = false;

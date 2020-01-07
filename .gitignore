@@ -15,9 +15,9 @@ evaluationResult\.json
 
 pretrained/
 
-datasets/HeatGen/build
-datasets/PAFGen/build
-datasets/HeatPafParser/build
+utils/operator_cxx/HeatPafParser/build
+utils/operator_cxx/PAFGen/build
+utils/operator_cxx/HeatPafParser/build
 .cproject
 
 .project
