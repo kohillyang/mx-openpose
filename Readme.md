@@ -1,13 +1,20 @@
 # Requirements
 
-`python3 -m pip install mxnet_cu100 -i https://pypi.tuna.tsinghua.edu.cn/simple --pre tqdm opencv-python easydict pycocotools gluoncv`
+```
+tqdm
+opencv-python
+easydict
+pycocotools
+gluoncv
+mxnet
+```
 
 # Prepare for train.
-Just run `python3 train_gluon_cpm.py`, you may want to change the coco path and gpus in configs.py
+Just run `python3 scripts/train_gluon_cpm.py`, you may want to change the coco path and gpus in configs.py
 
 
 # Demo
-After you have trained your own model or download the pretrained model, you can run `python3 demo_cpm.py` to evaluate the model.
+After you have trained your own model or download the pretrained model, you can run `scripts/evaluate.py` to evaluate the model.
 
 
 # Results on val 2017
