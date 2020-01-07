@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-sys.path.append("MobulaOP")
+sys.path.append(os.path.join(os.path.dirname(__file__), "../MobulaOP"))
 import tqdm
 import time
 import easydict

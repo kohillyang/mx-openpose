@@ -17,7 +17,7 @@ pretrained/
 
 utils/operator_cxx/HeatPafParser/build
 utils/operator_cxx/PAFGen/build
-utils/operator_cxx/HeatPafParser/build
+utils/operator_cxx/HeatGen/build
 .cproject
 
 .project
