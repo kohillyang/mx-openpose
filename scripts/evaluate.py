@@ -1,80 +1,30 @@
+import cv2
+import json
+import os
 import sys
 
-sys.path.append("MobulaOP")
-import tqdm
 import mxnet as mx
 import numpy as np
-import os, cv2
-import json
-
-from models.cpm import CPMNet
-from pycocotools.cocoeval import COCOeval
+import tqdm
 from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
+
 from configs import get_coco_config
+from datasets.cocodatasets import COCOKeyPoints
+from models.cpm import CPMVGGNet
+
+sys.path.append("MobulaOP")
 from utils.heatpaf_parser import parse_heatpaf_py, parse_heatpaf_cxx
 import mobula
 
 
-def padRightDownCorner(img, stride, padValue):
-    h = img.shape[0]
-    w = img.shape[1]
-
-    pad = 4 * [None]
-    pad[0] = 0  # up
-    pad[1] = 0  # left
-    pad[2] = 0 if (h % stride == 0) else stride - (h % stride)  # down
-    pad[3] = 0 if (w % stride == 0) else stride - (w % stride)  # right
-
-    img_padded = img
-    pad_up = np.tile(img_padded[0:1, :, :] * 0 + padValue, (pad[0], 1, 1))
-    img_padded = np.concatenate((pad_up, img_padded), axis=0)
-    pad_left = np.tile(img_padded[:, 0:1, :] * 0 + padValue, (1, pad[1], 1))
-    img_padded = np.concatenate((pad_left, img_padded), axis=1)
-    pad_down = np.tile(img_padded[-2:-1, :, :] * 0 + padValue, (pad[2], 1, 1))
-    img_padded = np.concatenate((img_padded, pad_down), axis=0)
-    pad_right = np.tile(img_padded[:, -2:-1, :] * 0 + padValue, (1, pad[3], 1))
-    img_padded = np.concatenate((img_padded, pad_right), axis=1)
-
-    return img_padded, pad
-
-
-def pad_image(img_ori, dshape=(368, 368)):
-    fscale = 1.0 * dshape[0] / img_ori.shape[0]
-    img_resized = cv2.resize(img_ori, dsize=(0, 0), fx=fscale, fy=fscale)
-    image_padded, pad = padRightDownCorner(img_resized, 8, 128)
-    return img_resized, image_padded, pad, fscale
-
-
 if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
-    limbSeq = [[1, 8],
-               [8, 9],
-               [9, 10],
-               [1, 11],
-               [11, 12],
-               [12, 13],
-               [1, 2],
-               [2, 3],
-               [3, 4],
-               [2, 16],
-               [1, 5],
-               [5, 6],
-               [6, 7],
-               [5, 17],
-               [1, 0],
-               [0, 14],
-               [0, 15],
-               [14, 16],
-               [15, 17]]
-    limbSeq = np.array(limbSeq)
+
     mobula.op.load('HeatPafParser', os.path.join(os.path.dirname(__file__), "../utils/operator_cxx"))
-    dshape = (512, 512)
-    ctx_list = [mx.cpu(0)]
+    ctx_list = [mx.gpu(0)]
     config = get_coco_config()
-    # baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_val2017",))
-    # val_transform = transforms.Compose([transforms.ImagePad(dshape)])
-    # val_dataset = PafHeatMapDataSet(baseDataSet, config, val_transform)
-    # number_of_keypoints = val_dataset.number_of_keypoints
+    baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_val2017",))
     results = []
     image_ids = []
     annFile = os.path.join(config.TRAIN.DATASET.coco_root, 'annotations/person_keypoints_val2017.json')
@@ -82,18 +32,16 @@ if __name__ == '__main__':
     cocoGt = COCO(annFile)
     cats = cocoGt.loadCats(cocoGt.getCatIds())
     catIds = cocoGt.getCatIds(catNms=['person'])
-    # imgIds = cocoGt.getImgIds(catIds=catIds)
+    imgIds = cocoGt.getImgIds(catIds=catIds)
 
-    # # net = DRN50_GCN(num_classes=val_dataset.number_of_keypoints + 2 * val_dataset.number_of_pafs)
-    # # sym, _, _ = mx.model.load_checkpoint('pretrained/pose', 0)
-    # net = CPMVGGNet(resize=False)
-    # net.collect_params().load("pretrained/pose-0000.params")
-    net = CPMNet(19, 19, resize=False)
-    net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
+    net = CPMVGGNet(resize=False)
+    net.collect_params().load("pretrained/pose-0000.params")
+
+    # net = CPMNet(19, 19, resize=False)
+    # net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
     net.collect_params().reset_ctx(ctx_list)
 
-    imgIds = cocoGt.getImgIds(catIds=catIds)
-    for i in tqdm.tqdm(range(10)):
+    for i in tqdm.trange(len(imgIds)):
         image_id = imgIds[i]
         img = cocoGt.loadImgs(image_id)[0]
         image_path = os.path.join(image_dir, img['file_name'])
@@ -101,23 +49,36 @@ if __name__ == '__main__':
         image_id = img['id']
         image_ids.append(image_id)
         image_ori = cv2.imread(image_path)[:, :, ::-1]
+        boxsize = 368
+        scale_search = [0.5, 1, 1.5, 2]
+        multiplier = [x * boxsize * 1.0 / image_ori.shape[0] for x in scale_search]
+        heatmaps = []
+        pafmaps = []
+        for scale in multiplier:
+            image_resized = cv2.resize(image_ori, (0, 0), fx=scale, fy=scale)
+            fp = lambda x: x if x % 8==0 else x + 8 - x % 8
+            image_resized_padded = np.zeros(shape=(fp(image_resized.shape[0]), fp(image_resized.shape[1]), image_resized.shape[2]), dtype=np.float32)
+            image_resized_padded[:image_resized.shape[0], :image_resized.shape[1], :image_resized.shape[2]] = image_resized
+            data = mx.nd.array(image_resized[np.newaxis]).as_in_context(ctx_list[0])
+            net_results = net(data)
+            heatmap = net_results[-1][0].asnumpy().transpose((1, 2, 0))
+            pafmap = net_results[-2][0].asnumpy().transpose((1, 2, 0))
+            heatmap = cv2.resize(heatmap, (0, 0), fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
+            pafmap = cv2.resize(pafmap, (0, 0), fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
+            heatmap = heatmap[:image_resized.shape[0], :image_resized.shape[1]]
+            pafmap = pafmap[:image_resized.shape[0], :image_resized.shape[1]]
+            heatmap = cv2.resize(heatmap, (image_ori.shape[1], image_ori.shape[0]), interpolation=cv2.INTER_CUBIC)
+            pafmap = cv2.resize(pafmap, (image_ori.shape[1], image_ori.shape[0]), interpolation=cv2.INTER_CUBIC)
+            heatmaps.append(heatmap)
+            pafmaps.append(pafmap)
+        heatmap_mean = np.mean(heatmaps, axis=0)
+        pafmap_mean = np.mean(pafmaps, axis=0)
 
-        inputs = []
-        for scale in [1]:
-            image_resized = cv2.resize(image_ori, (0, 0), fx=scale, fy=scale)[np.newaxis]
-            inputs.append(mx.nd.array(image_resized).as_in_context(ctx_list[0]))
-        net_results = [net(x) for x in inputs]
-        heatmaps = [mx.nd.contrib.BilinearResize2D(x[-1], width=image_ori.shape[1], height=image_ori.shape[0]).asnumpy()
-                    for x in net_results]
-        pafmaps = [mx.nd.contrib.BilinearResize2D(x[-2], width=image_ori.shape[1], height=image_ori.shape[0]).asnumpy()
-                   for x in net_results]
-        heatmap_mean = np.mean(heatmaps, axis=0)[0]
-        pafmap_mean = np.mean(pafmaps, axis=0)[0]
-
-        r1 = parse_heatpaf_cxx(heatmap_mean.astype(np.float64), pafmap_mean.astype(np.float64), limbSeq, image_id)
-        r2 = parse_heatpaf_py(image_ori, heatmap_mean.transpose((1, 2, 0)), pafmap_mean.transpose((1, 2, 0)), limbSeq,
-                              image_id)
-        results.extend(r1)
+        if config.VAL.USE_CXX_HEATPAF_PARSER:
+            r = parse_heatpaf_cxx(heatmap_mean.astype(np.float64), pafmap_mean.astype(np.float64), limbSeq, image_id)
+        else:
+            r = parse_heatpaf_py(image_ori, heatmap_mean, pafmap_mean, baseDataSet.skeleton, image_id)
+        results.extend(r)
 
     annType = ['segm', 'bbox', 'keypoints']
     annType = annType[2]  # specify type here

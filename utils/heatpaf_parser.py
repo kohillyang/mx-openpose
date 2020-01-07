@@ -16,7 +16,7 @@ def parse_heatpaf_py(oriImg, heatmap_avg, paf_avg, limbSeq, image_id=0, category
         x_list = []
         y_list = []
         map_ori = heatmap_avg[:, :, part]
-        map = map_ori  # gaussian_filter(map_ori, sigma=3)
+        map = gaussian_filter(map_ori, sigma=3)
         map_left = np.zeros(map.shape)
         map_left[1:, :] = map[:-1, :]
         map_right = np.zeros(map.shape)
