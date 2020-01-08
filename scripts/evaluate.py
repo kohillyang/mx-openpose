@@ -16,6 +16,7 @@ from models.cpm import CPMVGGNet, CPMNet
 
 sys.path.append("MobulaOP")
 from utils.heatpaf_parser import parse_heatpaf_cxx
+from utils.viz import show_keypoints
 import mobula
 
 
@@ -47,7 +48,6 @@ if __name__ == '__main__':
         image_id = imgIds[i]
         img = cocoGt.loadImgs(image_id)[0]
         image_path = os.path.join(image_dir, img['file_name'])
-        # image_path = "figures/test2.jpg"
         image_id = img['id']
         image_ids.append(image_id)
         image_ori = cv2.imread(image_path)[:, :, ::-1]
@@ -82,6 +82,7 @@ if __name__ == '__main__':
                                                 for i in range(heatmap_mean.shape[2])])
             pafmap_mean_transposed = pafmap_mean.transpose((2, 0, 1))
             r = parse_heatpaf_cxx(heatmap_mean_transposed, pafmap_mean_transposed, baseDataSet.skeleton, image_id)
+            # show_keypoints(image_ori, [x["keypoints"] for x in r])
             results.extend(r)
 
     annType = ['segm', 'bbox', 'keypoints']

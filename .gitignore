@@ -23,3 +23,5 @@ utils/operator_cxx/HeatGen/build
 .project
 
 .settings/
+
+\.pydevproject
