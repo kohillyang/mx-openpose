@@ -46,6 +46,6 @@ def get_coco_config():
     # use cxx implementation of heatpaf_parse, which is only supported on Linux,
     # on Windows this option should be set to False.
     config.VAL = easydict.EasyDict()
-    config.VAL.USE_CXX_HEATPAF_PARSER = False
+    config.VAL.USE_CXX_HEATPAF_PARSER = True
 
     return config

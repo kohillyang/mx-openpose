@@ -21,7 +21,6 @@ import mobula
 
 if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
-
     mobula.op.load('HeatPafParser', os.path.join(os.path.dirname(__file__), "../utils/operator_cxx"))
     ctx_list = [mx.gpu(8)]
     config = get_coco_config()
@@ -39,8 +38,7 @@ if __name__ == '__main__':
     # net.collect_params().load("pretrained/pose-0000.params")
 
     net = CPMNet(19, 19, resize=False)
-    net.collect_params().load("output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
-    # print("CPMNet")
+    net.collect_params().load("pretrained/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
     net.hybridize()
 
     net.collect_params().reset_ctx(ctx_list)
@@ -79,8 +77,7 @@ if __name__ == '__main__':
         pafmap_mean = np.mean(pafmaps, axis=0)
 
         if config.VAL.USE_CXX_HEATPAF_PARSER:
-            from scipy.ndimage.filters import gaussian_filter
-            heatmap_mean = gaussian_filter(heatmap_mean, sigma=3)
+            heatmap_mean = cv2.GaussianBlur(heatmap_mean, (5, 5), 3)
             r = parse_heatpaf_cxx(heatmap_mean.transpose((2, 0, 1)), pafmap_mean.transpose((2, 0, 1)), baseDataSet.skeleton, image_id)
         else:
             r = parse_heatpaf_py(image_ori, heatmap_mean, pafmap_mean, baseDataSet.skeleton, image_id)
