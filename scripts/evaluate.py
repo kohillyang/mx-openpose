@@ -15,7 +15,7 @@ from datasets.cocodatasets import COCOKeyPoints
 from models.cpm import CPMVGGNet, CPMNet
 
 sys.path.append("MobulaOP")
-from utils.heatpaf_parser import parse_heatpaf_py, parse_heatpaf_cxx
+from utils.heatpaf_parser import parse_heatpaf_cxx
 import mobula
 
 
@@ -82,9 +82,7 @@ if __name__ == '__main__':
                                                 for i in range(heatmap_mean.shape[2])])
             pafmap_mean_transposed = pafmap_mean.transpose((2, 0, 1))
             r = parse_heatpaf_cxx(heatmap_mean_transposed, pafmap_mean_transposed, baseDataSet.skeleton, image_id)
-        else:
-            r = parse_heatpaf_py(image_ori, heatmap_mean, pafmap_mean, baseDataSet.skeleton, image_id)
-        results.extend(r)
+            results.extend(r)
 
     annType = ['segm', 'bbox', 'keypoints']
     annType = annType[2]  # specify type here
