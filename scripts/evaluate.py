@@ -77,8 +77,11 @@ if __name__ == '__main__':
         pafmap_mean = np.mean(pafmaps, axis=0)
 
         if config.VAL.USE_CXX_HEATPAF_PARSER:
-            heatmap_mean = cv2.GaussianBlur(heatmap_mean, (5, 5), 3)
-            r = parse_heatpaf_cxx(heatmap_mean.transpose((2, 0, 1)), pafmap_mean.transpose((2, 0, 1)), baseDataSet.skeleton, image_id)
+            from scipy.ndimage.filters import gaussian_filter
+            heatmap_mean_transposed = np.array([gaussian_filter(heatmap_mean[:, :, i], sigma=3)
+                                                for i in range(heatmap_mean.shape[2])])
+            pafmap_mean_transposed = pafmap_mean.transpose((2, 0, 1))
+            r = parse_heatpaf_cxx(heatmap_mean_transposed, pafmap_mean_transposed, baseDataSet.skeleton, image_id)
         else:
             r = parse_heatpaf_py(image_ori, heatmap_mean, pafmap_mean, baseDataSet.skeleton, image_id)
         results.extend(r)
