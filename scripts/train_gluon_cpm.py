@@ -6,6 +6,7 @@ import tqdm
 import time
 import easydict
 import pprint
+import argparse
 
 import mxnet as mx
 import mxnet.autograd as ag
@@ -91,24 +92,34 @@ def log_init(filename):
     logger.addHandler(ch)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train Openpose network')
+    parser.add_argument('--dataset-root', help='experiment configure file name', required=True, type=str)
+    parser.add_argument('--gpus', help='experiment configure file name', required=False, type=str, default="0, 1")
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == '__main__':
     os.environ["MXNET_USE_FUSION"]="0"
     from configs import get_coco_config
     config = get_coco_config()
+    args = parse_args()
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix,
                                              "resnet50-cpm-resnet-cropped-flipped_rotated-masked")
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))
+    logging.info(args)
 
     # fix seed for mxnet, numpy and python builtin random generator.
     mx.random.seed(3)
     np.random.seed(3)
 
-    ctx = [mx.gpu(int(i)) for i in config.TRAIN.gpus]
+    ctx = [mx.gpu(int(i)) for i in [int(x) for x in str(args.gpus).split(",")]]
     ctx = ctx if ctx else [mx.cpu()]
 
-    baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_train2017",))
+    baseDataSet = COCOKeyPoints(root=args.dataset_root, splits=("person_keypoints_train2017",))
     train_transform = transforms.Compose([
                                           transforms.RandomScale(config),
                                           transforms.RandomRotate(config),
