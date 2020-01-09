@@ -153,7 +153,7 @@ class _COCOKeyPoints(object):
 
     def _check_load_keypoints(self, coco, entry):
         """Check and load ground-truth keypoints"""
-        ann_ids = coco.getAnnIds(imgIds=entry['id'], iscrowd=False)
+        ann_ids = coco.getAnnIds(imgIds=entry['id'], iscrowd=None)
         objs = coco.loadAnns(ann_ids)
         # check valid bboxes
         valid_objs = []
@@ -198,7 +198,7 @@ class _COCOKeyPoints(object):
 
                 return {'bbox': (xmin, ymin, xmax, ymax), 'joints_3d': joints_3d, "reason":0}
             r = parse_obj(obj1)
-            if r["reason"] != 0:
+            if r["reason"] == 0:
                 has_valid_anno = True
             r["segmentation"] = obj1["segmentation"]
             r["image_width"] = width
@@ -214,7 +214,8 @@ class _COCOKeyPoints(object):
                     'image_height': -1,
                     'segmentation': None
                 })
-        return valid_objs
+        if has_valid_anno:
+            return valid_objs
 
     def _get_box_center_area(self, bbox):
         """Get bbox center"""
@@ -254,9 +255,9 @@ class COCOKeyPoints(object):
                 xy = joints_3d[:, :2, 0]  # nx2
                 visible = joints_3d[:, :1, 1]  # nx1
                 joints_2d = np.concatenate([xy, visible], axis=1)  # nx3
-                self.objs[image_id]["image_path"] = image_path
                 self.objs[image_id]["bboxes"].append(bbox)
                 self.objs[image_id]["joints"].append(joints_2d)
+                self.objs[image_id]["image_path"] = image_path
             else:
                 self.objs[image_id]["mask_miss_segs"].append(label_dict['segmentation'])
             self.objs[image_id]["image_width"] = label_dict["image_width"]

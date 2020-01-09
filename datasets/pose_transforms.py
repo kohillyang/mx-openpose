@@ -244,7 +244,7 @@ class RandomFlip(object):
             keypoints_flipped[:, :, 0] = w - 1 - keypoints[:, :, 0]
             keypoints_flipped = keypoints_flipped[:, self.flip_indices]
             availability_flipped = availability[:, self.flip_indices]
-            mask_miss_flipped = mask_miss[:, ::-1, :].copy()
+            mask_miss_flipped = mask_miss[:, ::-1].copy()
             data_dict["image"] = img_flipped
             data_dict["bboxes"] = bbox_flipped
             data_dict["keypoints"] = keypoints_flipped

@@ -95,7 +95,8 @@ if __name__ == '__main__':
     os.environ["MXNET_USE_FUSION"]="0"
     from configs import get_coco_config
     config = get_coco_config()
-    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-resnet-cropped-flipped_rotated")
+    config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix,
+                                             "resnet50-cpm-resnet-cropped-flipped_rotated-masked")
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))
@@ -119,18 +120,21 @@ if __name__ == '__main__':
 
     # import matplotlib.pyplot as plt
     # for i in range(len(train_dataset)):
-    #     image, heatmap, hm, pf, pfm = train_dataset[i]
-    #     plt.imshow(image.astype(np.uint8))
-    #     plt.savefig("output/figures/{}_ori_image.jpg".format(i))
-    #     plt.imshow(heatmap.max(axis=0))
-    #
-    #     for j in range(heatmap.shape[0]):
-    #         plt.imshow(heatmap[j])
-    #         plt.savefig("output/figures/h{}_{}_heatmap.jpg".format(i, j))
-    #     for j in range(pf.shape[0]):
-    #         plt.imshow(pf[j])
-    #         plt.savefig("output/figures/p{}_{}_pafmap.jpg".format(i, j))
-    #     plt.close()
+    #     image, heatmap, hm, pf, pfm, mask_miss = train_dataset[i]
+    #     fig, axes = plt.subplots(2, 1)
+    #     axes[0].imshow(image.astype(np.uint8))
+    #     axes[1].imshow(mask_miss.astype(np.uint8))
+    #     plt.show()
+    #     # plt.savefig("output/figures/{}_ori_image.jpg".format(i))
+    #     # plt.imshow(heatmap.max(axis=0))
+    #     #
+    #     # for j in range(heatmap.shape[0]):
+    #     #     plt.imshow(heatmap[j])
+    #     #     plt.savefig("output/figures/h{}_{}_heatmap.jpg".format(i, j))
+    #     # for j in range(pf.shape[0]):
+    #     #     plt.imshow(pf[j])
+    #     #     plt.savefig("output/figures/p{}_{}_pafmap.jpg".format(i, j))
+    #     # plt.close()
     # exit()
 
     _ = train_dataset[0]  # Trigger mobula compiling
@@ -194,19 +198,19 @@ if __name__ == '__main__':
             heatmaps_masks_list = gluon.utils.split_and_load(batch[2], ctx_list=ctx, batch_axis=0)
             pafmaps_list = gluon.utils.split_and_load(batch[3], ctx_list=ctx, batch_axis=0)
             pafmaps_masks_list = gluon.utils.split_and_load(batch[4], ctx_list=ctx, batch_axis=0)
-
+            mask_miss_list  = gluon.utils.split_and_load(batch[5], ctx_list=ctx, batch_axis=0)
             losses = []
             losses_dict = {}
             with ag.record():
-                for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks in zip(
-                        data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list, pafmaps_masks_list):
+                for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks, masks_miss in zip(
+                        data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list, pafmaps_masks_list, mask_miss_list):
                     y_hat = net(data)
                     for i in range(len(y_hat) // 2):
                         heatmap_prediction = y_hat[i * 2 + 1]
                         pafmap_prediction = y_hat[i * 2]
                         number_image_per_gpu = heatmap_prediction.shape[0]
-                        loss_heatmap = mx.nd.sum(L2Loss(heatmap_prediction,  heatmaps) * heatmaps_masks)
-                        loss_pafmap = mx.nd.sum(L2Loss(pafmap_prediction, pafmaps) * pafmaps_masks)
+                        loss_heatmap = mx.nd.sum(L2Loss(heatmap_prediction,  heatmaps) * heatmaps_masks * masks_miss.expand_dims(axis=1))
+                        loss_pafmap = mx.nd.sum(L2Loss(pafmap_prediction, pafmaps) * pafmaps_masks * masks_miss.expand_dims(axis=1))
 
                         losses.append(loss_heatmap)
                         losses.append(loss_pafmap)

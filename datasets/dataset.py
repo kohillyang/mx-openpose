@@ -51,6 +51,7 @@ class PafHeatMapDataSet(object):
         pafmap = mobula.op.PAFGen[np.ndarray](limb_sequence, self.stride, self.distance_threshold)(image, bboxes, joints)
         heatmap_mask = self.genHeatmapMask(joints, heatmap, bbox_idx)
         pafmap_mask = self.genPafmapMask(limb_sequence, joints, pafmap, bbox_idx)
+        mask_miss = cv2.resize(mask_miss, (heatmap.shape[2], heatmap.shape[1]))
         return image, heatmap, heatmap_mask, pafmap, pafmap_mask, mask_miss
 
     def genHeatmapMask(self, joints, heatmaps, bbox_idx):
