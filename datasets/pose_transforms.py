@@ -23,12 +23,18 @@ class ImagePad(object):
         bboxes = data_dict["bboxes"]
         keypoints = data_dict["keypoints"]
         availability = data_dict["availability"]
+        mask_miss = data_dict["mask_miss"]
 
         dshape = self.dst_shape
         fscale = min(dshape[0] / img_ori.shape[0], dshape[1] / img_ori.shape[1])
         img_resized = cv2.resize(img_ori, dsize=(0, 0), fx=fscale, fy=fscale)
         img_padded = np.zeros(shape=(int(dshape[0]), int(dshape[1]), 3), dtype=np.float32)
         img_padded[:img_resized.shape[0], :img_resized.shape[1], :img_resized.shape[2]] = img_resized
+
+        mask_miss_resized = cv2.resize(mask_miss, dsize=(0, 0), fx=fscale, fy=fscale)
+        mask_miss_padded = np.zeros(shape=(int(dshape[0]), int(dshape[1])), dtype=np.float32)
+        mask_miss_padded[:mask_miss_resized.shape[0], :mask_miss_resized.shape[1]] = mask_miss_padded
+
         keypoints = keypoints * fscale
         bboxes = bboxes * fscale
 
@@ -36,6 +42,7 @@ class ImagePad(object):
         data_dict["bboxes"] = bboxes
         data_dict["keypoints"] = keypoints
         data_dict["availability"] = availability
+        data_dict["mask_miss"] = mask_miss
         return data_dict
 
 
@@ -49,12 +56,14 @@ class RandomScale(object):
         bboxes = data_dict["bboxes"]
         keypoints = data_dict["keypoints"]
         availability = data_dict["availability"]
+        mask_miss = data_dict["mask_miss"]
 
         bboxes = bboxes.astype(np.float32).copy()
         keypoints = keypoints.astype(np.float32).copy()
         availability = availability.copy()
         scale = np.random.random() * (self.scale_max - self.scale_min) + self.scale_min
-        img_resized = cv2.resize(img_ori, (0, 0), fx=scale, fy = scale)
+        img_resized = cv2.resize(img_ori, (0, 0), fx=scale, fy=scale)
+        mask_miss_resized = cv2.resize(mask_miss, (0, 0), fx=scale, fy=scale)
         bboxes[:, :4] *= scale
         keypoints *= scale
 
@@ -62,6 +71,7 @@ class RandomScale(object):
         data_dict["bboxes"] = bboxes
         data_dict["keypoints"] = keypoints
         data_dict["availability"] = availability
+        data_dict["mask_miss"] = mask_miss_resized
         return data_dict
 
 
@@ -76,6 +86,7 @@ class RandomCenterCrop(object):
         bboxes = data_dict["bboxes"]
         keypoints = data_dict["keypoints"]
         availability = data_dict["availability"]
+        mask_miss = data_dict["mask_miss"]
 
         bboxes = bboxes.copy()
         keypoints = keypoints.copy()
@@ -108,6 +119,11 @@ class RandomCenterCrop(object):
         dst_end_x = dst_start_x + image_cropped.shape[1]
         dst_end_y = dst_start_y + image_cropped.shape[0]
         image_cropped_padded[dst_start_y:dst_end_y, dst_start_x:dst_end_x] = image_cropped
+
+        mask_miss_cropped = mask_miss[start_y:end_y, start_x:end_x]
+        mask_miss_cropped_padded = np.zeros(shape=(self.crop_size_y, self.crop_size_x), dtype=np.float32)
+        mask_miss_cropped_padded[dst_start_y:dst_end_y, dst_start_x:dst_end_x] = mask_miss_cropped
+
         bboxes[:, (0, 2)] -= offset_x
         bboxes[:, (1, 3)] -= offset_y
         keypoints[:, :, 0] -= offset_x
@@ -123,10 +139,11 @@ class RandomCenterCrop(object):
         data_dict["keypoints"] = keypoints
         data_dict["availability"] = availability
         data_dict["crop_bbox_idx"] = bbox_idx  # to generate mask.
+        data_dict["mask_miss"] = mask_miss_cropped_padded
         return data_dict
 
 
-def rotate_bound(image, kp, angle):
+def rotate_bound(image, mask, kp, angle):
     # grab the dimensions of the image and then determine the
     # center
     h, w = image.shape[:2]
@@ -150,8 +167,8 @@ def rotate_bound(image, kp, angle):
     M[0, 2] += (nW / 2) - cX
     M[1, 2] += (nH / 2) - cY
     rotated = cv2.warpAffine(image, M, (nW, nH))
-
-    return rotated, np.dot(kp_new, M.T), M
+    mask_rotated = cv2.warpAffine(mask, M, (nW, nH))
+    return rotated, mask_rotated, np.dot(kp_new, M.T), M
 
 
 class RandomRotate(object):
@@ -164,6 +181,7 @@ class RandomRotate(object):
         bbox = data_dict["bboxes"]
         keypoints = data_dict["keypoints"]
         availability = data_dict["availability"]
+        mask_miss = data_dict["mask_miss"]
         assert bbox.shape.__len__() == 2
         assert bbox.shape[1] == 4
         assert keypoints.shape.__len__() == 3
@@ -178,7 +196,7 @@ class RandomRotate(object):
         kps[:, 3, :] = bbox[:, (0, 3)]
 
         angle = np.random.uniform(self.min_angle, self.max_angle)
-        image_rotated, kps_rotated, M = rotate_bound(img_ori, kps.reshape((-1, 2)), angle)
+        image_rotated, mask_miss_rotated, kps_rotated, M = rotate_bound(img_ori, mask_miss, kps.reshape((-1, 2)), angle)
         kps_rotated = kps_rotated.reshape(kps.shape)
         bbox_rotated = np.zeros_like(bbox)
         bbox_rotated[:, 0] = kps_rotated[:, :, 0].min(axis=1)
@@ -196,6 +214,7 @@ class RandomRotate(object):
         data_dict["bboxes"] = bbox_rotated
         data_dict["keypoints"] = keypoints_rotated.reshape(keypoints.shape)
         data_dict["availability"] = availability
+        data_dict["mask_miss"] = mask_miss_rotated
         return data_dict
 
 
@@ -208,6 +227,7 @@ class RandomFlip(object):
         bbox = data_dict["bboxes"]
         keypoints = data_dict["keypoints"]
         availability = data_dict["availability"]
+        mask_miss = data_dict["mask_miss"]
 
         assert bbox.shape.__len__() == 2
         assert bbox.shape[1] == 4
@@ -224,10 +244,11 @@ class RandomFlip(object):
             keypoints_flipped[:, :, 0] = w - 1 - keypoints[:, :, 0]
             keypoints_flipped = keypoints_flipped[:, self.flip_indices]
             availability_flipped = availability[:, self.flip_indices]
-
+            mask_miss_flipped = mask_miss[:, ::-1, :].copy()
             data_dict["image"] = img_flipped
             data_dict["bboxes"] = bbox_flipped
             data_dict["keypoints"] = keypoints_flipped
             data_dict["availability"] = availability_flipped
+            data_dict["mask_miss"] = mask_miss_flipped
         return data_dict
 
