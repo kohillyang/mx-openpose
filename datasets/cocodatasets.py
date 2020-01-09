@@ -6,9 +6,9 @@ import os
 import copy
 import numpy as np
 import mxnet as mx
-import pycocotools
+import pycocotools.mask as maskUtils
 from collections import defaultdict
-
+import cv2
 from gluoncv.utils.bbox import bbox_xywh_to_xyxy, bbox_clip_xyxy
 
 
@@ -160,51 +160,59 @@ class _COCOKeyPoints(object):
         width = entry['width']
         height = entry['height']
 
-        for obj in objs:
-            contiguous_cid = self.json_id_to_contiguous[obj['category_id']]
-            if contiguous_cid >= self.num_class:
-                # not class of interest
-                continue
-            if max(obj['keypoints']) == 0:
-                continue
-            # convert from (x, y, w, h) to (xmin, ymin, xmax, ymax) and clip bound
-            xmin, ymin, xmax, ymax = bbox_clip_xyxy(bbox_xywh_to_xyxy(obj['bbox']), width, height)
-            # require non-zero box area
-            if obj['area'] <= 0 or xmax <= xmin or ymax <= ymin:
-                continue
+        has_valid_anno = False
+        for obj1 in objs:
+            def parse_obj(obj):
+                contiguous_cid = self.json_id_to_contiguous[obj['category_id']]
+                if contiguous_cid >= self.num_class:
+                    # not class of interest
+                    return {"reason":1}
+                if max(obj['keypoints']) == 0:
+                    return {"reason":2}
+                # convert from (x, y, w, h) to (xmin, ymin, xmax, ymax) and clip bound
+                xmin, ymin, xmax, ymax = bbox_clip_xyxy(bbox_xywh_to_xyxy(obj['bbox']), width, height)
+                # require non-zero box area
+                if obj['area'] <= 0 or xmax <= xmin or ymax <= ymin:
+                    return {"reason":3}
 
-            # joints 3d: (num_joints, 3, 2); 3 is for x, y, z; 2 is for position, visibility
-            joints_3d = np.zeros((self.num_joints, 3, 2), dtype=np.float32)
-            for i in range(self.num_joints):
-                joints_3d[i, 0, 0] = obj['keypoints'][i * 3 + 0]
-                joints_3d[i, 1, 0] = obj['keypoints'][i * 3 + 1]
-                # joints_3d[i, 2, 0] = 0
-                visible = min(1, obj['keypoints'][i * 3 + 2])
-                joints_3d[i, :2, 1] = visible
-                # joints_3d[i, 2, 1] = 0
+                # joints 3d: (num_joints, 3, 2); 3 is for x, y, z; 2 is for position, visibility
+                joints_3d = np.zeros((self.num_joints, 3, 2), dtype=np.float32)
+                for i in range(self.num_joints):
+                    joints_3d[i, 0, 0] = obj['keypoints'][i * 3 + 0]
+                    joints_3d[i, 1, 0] = obj['keypoints'][i * 3 + 1]
+                    # joints_3d[i, 2, 0] = 0
+                    visible = min(1, obj['keypoints'][i * 3 + 2])
+                    joints_3d[i, :2, 1] = visible
+                    # joints_3d[i, 2, 1] = 0
 
-            if np.sum(joints_3d[:, 0, 1]) < 1:
-                # no visible keypoint
-                continue
+                if np.sum(joints_3d[:, 0, 1]) < 1:
+                    # no visible keypoint
+                    return {"reason":4}
 
-            if self._check_centers:
-                bbox_center, bbox_area = self._get_box_center_area((xmin, ymin, xmax, ymax))
-                kp_center, num_vis = self._get_keypoints_center_count(joints_3d)
-                ks = np.exp(-2 * np.sum(np.square(bbox_center - kp_center)) / bbox_area)
-                if (num_vis / 80.0 + 47 / 80.0) > ks:
-                    continue
+                if self._check_centers:
+                    bbox_center, bbox_area = self._get_box_center_area((xmin, ymin, xmax, ymax))
+                    kp_center, num_vis = self._get_keypoints_center_count(joints_3d)
+                    ks = np.exp(-2 * np.sum(np.square(bbox_center - kp_center)) / bbox_area)
+                    if (num_vis / 80.0 + 47 / 80.0) > ks:
+                        return {"reason": 5}
 
-            valid_objs.append({
-                'bbox': (xmin, ymin, xmax, ymax),
-                'joints_3d': joints_3d
-            })
-
-        if not valid_objs:
+                return {'bbox': (xmin, ymin, xmax, ymax), 'joints_3d': joints_3d, "reason":0}
+            r = parse_obj(obj1)
+            if r["reason"] != 0:
+                has_valid_anno = True
+            r["segmentation"] = obj1["segmentation"]
+            r["image_width"] = width
+            r["image_height"] = height
+            valid_objs.append(r)
+        if not valid_objs or not has_valid_anno:
             if not self._skip_empty:
                 # dummy invalid labels if no valid objects are found
                 valid_objs.append({
                     'bbox': np.array([-1, -1, 0, 0]),
-                    'joints_3d': np.zeros((self.num_joints, 3, 2), dtype=np.float32)
+                    'joints_3d': np.zeros((self.num_joints, 3, 2), dtype=np.float32),
+                    'image_width': -1,
+                    'image_height': -1,
+                    'segmentation': None
                 })
         return valid_objs
 
@@ -236,17 +244,24 @@ def convert_coco2openpose(joints):
 class COCOKeyPoints(object):
     def __init__(self, *args, **kwargs):
         self.base_dataset = _COCOKeyPoints(*args, **kwargs)
-        self.objs = defaultdict(lambda : {"bboxes":[], "joints":[]})
+        self.objs = defaultdict(lambda : {"bboxes": [], "joints": [], "mask_miss_segs": [],
+                                          "image_height": -1, "image_width":-1})
         for i in range(len(self.base_dataset)):
             image_path, label_dict, image_id = self.base_dataset[i]
-            bbox = label_dict["bbox"]  # tuple as (xmin, ymin, xmax, ymax)
-            joints_3d = label_dict["joints_3d"]
-            xy = joints_3d[:, :2, 0]  # nx2
-            visible = joints_3d[:, :1, 1]  # nx1
-            joints_2d = np.concatenate([xy, visible], axis=1)  # nx3
-            self.objs[image_id]["image_path"] = image_path
-            self.objs[image_id]["bboxes"].append(bbox)
-            self.objs[image_id]["joints"].append(joints_2d)
+            if label_dict["reason"] == 0:
+                bbox = label_dict["bbox"]  # tuple as (xmin, ymin, xmax, ymax)
+                joints_3d = label_dict["joints_3d"]
+                xy = joints_3d[:, :2, 0]  # nx2
+                visible = joints_3d[:, :1, 1]  # nx1
+                joints_2d = np.concatenate([xy, visible], axis=1)  # nx3
+                self.objs[image_id]["image_path"] = image_path
+                self.objs[image_id]["bboxes"].append(bbox)
+                self.objs[image_id]["joints"].append(joints_2d)
+            else:
+                self.objs[image_id]["mask_miss_segs"].append(label_dict['segmentation'])
+            self.objs[image_id]["image_width"] = label_dict["image_width"]
+            self.objs[image_id]["image_height"] = label_dict["image_height"]
+
         self.image_ids = list(self.objs.keys())
         # limbSeq = [[2, 3], [2, 6], [3, 4], [4, 5], [6, 7], [7, 8], [2, 9], [9, 10],
         #            [10, 11], [2, 12], [12, 13], [13, 14], [2, 1], [1, 15], [15, 17],
@@ -282,7 +297,24 @@ class COCOKeyPoints(object):
         image_path = obj["image_path"]
         # Return as path, bboxes, joints, image_id
         joints = np.array([convert_coco2openpose(x) for x in joints])
-        return image_path, np.array(bboxes), np.array(joints), self.image_ids[item]
+        mask_miss_segs = obj["mask_miss_segs"]
+        mask_miss_binary = np.zeros((obj["image_height"], obj["image_width"]), dtype=np.int)
+        for segm in mask_miss_segs:
+            # seg for each instance, one seg may has several parts
+            if type(segm) is list:
+                # first merging them.
+                rles = maskUtils.frPyObjects(segm, obj["image_height"], obj["image_width"])
+                rle = maskUtils.merge(rles)
+            elif type(segm['counts']) == list:
+                # uncompressed RLE
+                rle = maskUtils.frPyObjects(segm, obj["image_height"], obj["image_width"])
+            else:
+                # rle
+                rle = segm
+            m = maskUtils.decode(rle)
+            mask_miss_binary = np.logical_or(mask_miss_binary, m)
+        return image_path, np.array(bboxes), np.array(joints), self.image_ids[item], \
+               np.logical_not(mask_miss_binary).astype(np.float32)
 
     def __len__(self):
         return len(self.image_ids)
