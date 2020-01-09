@@ -10,7 +10,11 @@ mxnet
 ```
 
 # Prepare for train.
-Just run `python3 scripts/train_gluon_cpm.py`, you may want to change the coco path and gpus in configs.py
+Example command: 
+```bash
+python3 scripts/train_gluon_cpm.py --dataset-root="/data3/zyx/yks/dataset/coco2017" --gpus="7,8"
+```
+you may want to change dataset root and gpus by yourselves.
 
 
 # Demo
