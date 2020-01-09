@@ -15,7 +15,9 @@ Just run `python3 scripts/train_gluon_cpm.py`, you may want to change the coco p
 
 # Demo
 After you have trained your own model or download the pretrained model, you can run `scripts/evaluate.py` to evaluate the model.
+
 Example Results of our implementation:
+
 ![](figures/Figure_1.png)
 
 # Results on val 2017
