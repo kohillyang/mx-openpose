@@ -35,8 +35,7 @@ def parse_args():
 if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
     args = parse_args()
-    mobula.op.load('HeatPafParser', os.path.join(os.path.dirname(__file__), "../utils/operator_cxx"))
-    ctx = [mx.gpu(int(i)) for i in [int(x) for x in str(args.gpus).split(",")] if int(i) > 0]
+    ctx = [mx.gpu(int(i)) for i in [int(x) for x in str(args.gpus).split(",")] if int(i) >= 0]
     ctx_list = ctx if ctx else [mx.cpu()]
     baseDataSet = COCOKeyPoints(root=args.dataset_root, splits=("person_keypoints_val2017",))
     results = []

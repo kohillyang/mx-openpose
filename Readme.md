@@ -14,11 +14,17 @@ Example command:
 ```bash
 python3 scripts/train_gluon_cpm.py --dataset-root="/data3/zyx/yks/dataset/coco2017" --gpus="7,8"
 ```
-you may want to change dataset root and gpus by yourselves.
+you may want to change dataset root and gpus by yourself.
 
 
 # Demo
-After you have trained your own model or download the pretrained model, you can run `scripts/evaluate.py` to evaluate the model.
+After you have trained your own model or download the pretrained model, you can use `scripts/evaluate.py` to evaluate the model.
+
+Example command:
+```bash
+/data2/zyx/yks/anaconda3/bin/python3 scripts/evaluate.py --resume=output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-masked-26-0.0.params --dataset-root="/data3/zyx/yks/dataset/coco2017" --gpus="2" --viz
+```
+Also, you may want to change resume, dataset root and gpus by yourself.
 
 Example Results of our implementation:
 
