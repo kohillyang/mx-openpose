@@ -94,8 +94,9 @@ def log_init(filename):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train Openpose network')
-    parser.add_argument('--dataset-root', help='experiment configure file name', required=True, type=str)
-    parser.add_argument('--gpus', help='experiment configure file name', required=False, type=str, default="0,1")
+    parser.add_argument('--dataset-root', help='coco dataset root contains annotations, train2017 and val2017.',
+                            required=True, type=str)
+    parser.add_argument('--gpus', help='The gpus used to train the network.', required=False, type=str, default="0,1")
     args = parser.parse_args()
     return args
 

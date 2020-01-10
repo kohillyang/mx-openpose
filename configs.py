@@ -6,7 +6,6 @@ def get_coco_config():
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/cpm/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
-    config.TRAIN.gpus = [3, 8]
     config.TRAIN.batch_size = 8
     config.TRAIN.optimizer = "SGD"
     config.TRAIN.lr = 4e-5
@@ -18,8 +17,6 @@ def get_coco_config():
     config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
     config.TRAIN.end_epoch = 60
     config.TRAIN.resume = None
-    config.TRAIN.DATASET = easydict.EasyDict()
-    config.TRAIN.DATASET.coco_root = "/data3/zyx/yks/dataset/coco2017"
     config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
 
     # params for random cropping
@@ -42,10 +39,5 @@ def get_coco_config():
 
     # params for random rotation
     config.TRAIN.TRANSFORM_PARAMS.max_rotation_degree = 40
-
-    # use cxx implementation of heatpaf_parse, which is only supported on Linux,
-    # on Windows this option should be set to False.
-    config.VAL = easydict.EasyDict()
-    config.VAL.USE_CXX_HEATPAF_PARSER = True
 
     return config

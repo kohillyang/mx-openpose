@@ -3,14 +3,13 @@ import json
 import os
 import sys
 import time
-
+import argparse
 import mxnet as mx
 import numpy as np
 import tqdm
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-from configs import get_coco_config
 from datasets.cocodatasets import COCOKeyPoints
 from models.cpm import CPMVGGNet, CPMNet
 
@@ -20,27 +19,42 @@ from utils.viz import show_keypoints
 import mobula
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='validate Openpose network')
+    parser.add_argument('--dataset-root', help='coco dataset root contains annotations, train2017 and val2017.',
+                        required=True, type=str)
+    parser.add_argument('--gpus', help='The gpus used to validate the network.', required=False, type=str, default="0")
+    parser.add_argument('--resume', help='params of the network.', required=True, type=str)
+    parser.add_argument('--viz', help='Whether to visualize the inference result.', required=False, type=bool, default=False)
+    parser.add_argument('--caffe-model', help='Whether to evaluate the original caffe model.', required=False,
+                        type=bool, default=False)
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == '__main__':
     os.environ["MXNET_CUDNN_AUTOTUNE_DEFAULT"] = "0"
+    args = parse_args()
     mobula.op.load('HeatPafParser', os.path.join(os.path.dirname(__file__), "../utils/operator_cxx"))
-    ctx_list = [mx.gpu(8)]
-    config = get_coco_config()
-    baseDataSet = COCOKeyPoints(root=config.TRAIN.DATASET.coco_root, splits=("person_keypoints_val2017",))
+    ctx = [mx.gpu(int(i)) for i in [int(x) for x in str(args.gpus).split(",")] if int(i) > 0]
+    ctx_list = ctx if ctx else [mx.cpu()]
+    baseDataSet = COCOKeyPoints(root=args.dataset_root, splits=("person_keypoints_val2017",))
     results = []
     image_ids = []
-    annFile = os.path.join(config.TRAIN.DATASET.coco_root, 'annotations/person_keypoints_val2017.json')
-    image_dir = os.path.join(config.TRAIN.DATASET.coco_root, 'val2017')
+    annFile = os.path.join(args.dataset_root, 'annotations/person_keypoints_val2017.json')
+    image_dir = os.path.join(args.dataset_root, 'val2017')
     cocoGt = COCO(annFile)
     cats = cocoGt.loadCats(cocoGt.getCatIds())
     catIds = cocoGt.getCatIds(catNms=['person'])
     imgIds = cocoGt.getImgIds(catIds=catIds)
 
-    # net = CPMVGGNet(resize=False)
-    # net.collect_params().load("pretrained/pose-0000.params")
-
-    net = CPMNet(19, 19, resize=False)
-    net.collect_params().load("pretrained/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params")
-    net.hybridize()
+    if args.caffe_model:
+        net = CPMVGGNet(resize=False)
+        net.collect_params().load("pretrained/pose-0000.params")
+    else:
+        net = CPMNet(19, 19, resize=False)
+        net.collect_params().load(args.resume)
+        net.hybridize()
 
     net.collect_params().reset_ctx(ctx_list)
 
@@ -76,14 +90,14 @@ if __name__ == '__main__':
         heatmap_mean = np.mean(heatmaps, axis=0)
         pafmap_mean = np.mean(pafmaps, axis=0)
 
-        if config.VAL.USE_CXX_HEATPAF_PARSER:
-            from scipy.ndimage.filters import gaussian_filter
-            heatmap_mean_transposed = np.array([gaussian_filter(heatmap_mean[:, :, i], sigma=3)
-                                                for i in range(heatmap_mean.shape[2])])
-            pafmap_mean_transposed = pafmap_mean.transpose((2, 0, 1))
-            r = parse_heatpaf_cxx(heatmap_mean_transposed, pafmap_mean_transposed, baseDataSet.skeleton, image_id)
-            # show_keypoints(image_ori, [x["keypoints"] for x in r])
-            results.extend(r)
+        from scipy.ndimage.filters import gaussian_filter
+        heatmap_mean_transposed = np.array([gaussian_filter(heatmap_mean[:, :, i], sigma=3)
+                                            for i in range(heatmap_mean.shape[2])])
+        pafmap_mean_transposed = pafmap_mean.transpose((2, 0, 1))
+        r = parse_heatpaf_cxx(heatmap_mean_transposed, pafmap_mean_transposed, baseDataSet.skeleton, image_id)
+        if args.viz:
+            show_keypoints(image_ori, [x["keypoints"] for x in r])
+        results.extend(r)
 
     annType = ['segm', 'bbox', 'keypoints']
     annType = annType[2]  # specify type here
