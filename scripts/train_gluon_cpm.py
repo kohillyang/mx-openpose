@@ -15,7 +15,7 @@ from mxnet import gluon
 
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
-from models.cpm import CPMNet
+from models.cpm import CPMNet, CPMVGGNet
 import datasets.pose_transforms as transforms
 
 import mobula
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     config = get_coco_config()
     args = parse_args()
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix,
-                                             "resnet50-cpm-resnet-cropped-flipped_rotated-masked")
+                                             "resnet50-cpm-vgg11-cropped-flipped_rotated-masked")
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))
@@ -150,7 +150,8 @@ if __name__ == '__main__':
     # exit()
 
     _ = train_dataset[0]  # Trigger mobula compiling
-    net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
+    # net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
+    net = CPMVGGNet()
     net.hybridize(static_alloc=True, static_shape=True)
     params = net.collect_params()
     for key in params.keys():

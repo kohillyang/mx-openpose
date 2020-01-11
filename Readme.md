@@ -61,3 +61,78 @@ mAP of the original model:
 
 
 The original pretrained model converted from Caffe can be downloaded from <https://drive.google.com/drive/folders/0BzffphMuhDDMV0RZVGhtQWlmS1U>, which is bought from [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>.
+43:
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.515
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.738
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.559
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.555
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.484
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.543
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.747
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.589
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.565
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.516
+
+42:
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.504
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.720
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.503
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.533
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.479
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.531
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.726
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.537
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.544
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.514
+ 
+41:
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.528
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.736
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.546
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.566
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.499
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.559
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.747
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.579
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.581
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.533
+    
+40: 
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.521
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.724
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.587
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.566
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.488
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.553
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.737
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.611
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.579
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.521
+
+39
+ 
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.522
+Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.729
+Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.559
+Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.558
+Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.493
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.549
+Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.737
+Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.589
+Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.569
+Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.526
+
+38:
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.515
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.735
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.554
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.566
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.473
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.544
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.747
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.589
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.577
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.505
+None
+
+
