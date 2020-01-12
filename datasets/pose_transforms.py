@@ -33,7 +33,7 @@ class ImagePad(object):
 
         mask_miss_resized = cv2.resize(mask_miss, dsize=(0, 0), fx=fscale, fy=fscale)
         mask_miss_padded = np.zeros(shape=(int(dshape[0]), int(dshape[1])), dtype=np.float32)
-        mask_miss_padded[:mask_miss_resized.shape[0], :mask_miss_resized.shape[1]] = mask_miss_padded
+        mask_miss_padded[:mask_miss_resized.shape[0], :mask_miss_resized.shape[1]] = mask_miss_resized
 
         keypoints = keypoints * fscale
         bboxes = bboxes * fscale
