@@ -6,7 +6,7 @@ def get_coco_config():
     config.TRAIN = easydict.EasyDict()
     config.TRAIN.save_prefix = "output/cpm/"
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
-    config.TRAIN.batch_size = 8
+    config.TRAIN.batch_size = 10
     config.TRAIN.optimizer = "SGD"
     config.TRAIN.lr = 2e-5
     config.TRAIN.momentum = 0.9

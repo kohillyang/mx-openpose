@@ -246,7 +246,6 @@ if __name__ == '__main__':
                 msg = ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
                 msg += ",lr={}".format(trainer.learning_rate)
                 logging.info(msg)
-                eval_metrics.reset()
 
         # calc mean loss on validate dataset for each epoch
         loss_val_heat = mx.metric.Loss("val_loss_heat")
