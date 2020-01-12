@@ -50,6 +50,8 @@ class RandomScale(object):
     def __init__(self, cfg):
         self.scale_min = cfg.TRAIN.TRANSFORM_PARAMS.scale_min
         self.scale_max = cfg.TRAIN.TRANSFORM_PARAMS.scale_max
+        self.crop_size_y = cfg.TRAIN.TRANSFORM_PARAMS.crop_size_y
+        self.target_dist = cfg.TRAIN.TRANSFORM_PARAMS.target_dist
 
     def __call__(self, data_dict):
         img_ori = data_dict["image"]
@@ -57,11 +59,17 @@ class RandomScale(object):
         keypoints = data_dict["keypoints"]
         availability = data_dict["availability"]
         mask_miss = data_dict["mask_miss"]
+        bbox_idx = data_dict["crop_bbox_idx"]
 
         bboxes = bboxes.astype(np.float32).copy()
         keypoints = keypoints.astype(np.float32).copy()
         availability = availability.copy()
-        scale = np.random.random() * (self.scale_max - self.scale_min) + self.scale_min
+
+        scale_multiplier = np.random.random() * (self.scale_max - self.scale_min) + self.scale_min
+        scale_self = (bboxes[bbox_idx][3] - bboxes[bbox_idx][1]) / self.crop_size_y
+        scale_abs = self.target_dist / scale_self
+        scale = scale_abs * scale_multiplier
+
         img_resized = cv2.resize(img_ori, (0, 0), fx=scale, fy=scale)
         mask_miss_resized = cv2.resize(mask_miss, (0, 0), fx=scale, fy=scale)
         bboxes[:, :4] *= scale
@@ -72,6 +80,17 @@ class RandomScale(object):
         data_dict["keypoints"] = keypoints
         data_dict["availability"] = availability
         data_dict["mask_miss"] = mask_miss_resized
+        return data_dict
+
+
+class RandomSelectBBOX(object):
+    def __init__(self, cfg=None):
+        pass
+
+    def __call__(self, data_dict):
+        bboxes = data_dict["bboxes"]
+        bbox_idx = np.random.randint(0, bboxes.shape[0])
+        data_dict["crop_bbox_idx"] = bbox_idx
         return data_dict
 
 
@@ -87,13 +106,12 @@ class RandomCenterCrop(object):
         keypoints = data_dict["keypoints"]
         availability = data_dict["availability"]
         mask_miss = data_dict["mask_miss"]
+        bbox_idx = data_dict["crop_bbox_idx"]
 
         bboxes = bboxes.copy()
         keypoints = keypoints.copy()
         availability = availability.copy()
 
-        # Choose a bbox
-        bbox_idx = np.random.randint(0, bboxes.shape[0])
         bbox = bboxes[bbox_idx]
         center_x = .5 * (bbox[0] + bbox[2])
         center_y = .5 * (bbox[1] + bbox[3])

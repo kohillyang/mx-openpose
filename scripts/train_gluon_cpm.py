@@ -122,6 +122,7 @@ if __name__ == '__main__':
 
     baseDataSet = COCOKeyPoints(root=args.dataset_root, splits=("person_keypoints_train2017",))
     train_transform = transforms.Compose([
+                                          transforms.RandomSelectBBOX(config),
                                           transforms.RandomScale(config),
                                           transforms.RandomRotate(config),
                                           transforms.RandomCenterCrop(config),

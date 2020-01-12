@@ -8,7 +8,7 @@ def get_coco_config():
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
     config.TRAIN.batch_size = 10
     config.TRAIN.optimizer = "SGD"
-    config.TRAIN.lr = 2e-5
+    config.TRAIN.lr = 4e-5
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0004
     config.TRAIN.lr_step = [16, 26, 39]
@@ -27,6 +27,7 @@ def get_coco_config():
     # params for random scale
     config.TRAIN.TRANSFORM_PARAMS.scale_min = 0.5
     config.TRAIN.TRANSFORM_PARAMS.scale_max = 1.1
+    config.TRAIN.TRANSFORM_PARAMS.target_dist = 0.6
 
     # params for putGaussianMaps
     config.TRAIN.TRANSFORM_PARAMS.sigma = 7.0
