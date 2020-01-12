@@ -11,11 +11,11 @@ def get_coco_config():
     config.TRAIN.lr = 4e-5
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0004
-    config.TRAIN.lr_step = [16, 26, 39]
+    config.TRAIN.lr_step = [6, 12, 18]
     config.TRAIN.warmup_step = 1000
     config.TRAIN.gamma = 1.0 / 3
     config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
-    config.TRAIN.end_epoch = 60
+    config.TRAIN.end_epoch = 24
     config.TRAIN.resume = None
     config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
 
