@@ -20,11 +20,19 @@ class PafHeatMapDataSet(object):
         self.stride = config.TRAIN.TRANSFORM_PARAMS.stride
         self.distance_threshold = config.TRAIN.TRANSFORM_PARAMS.distance_threshold
 
+        self.idx2imageid_bboxid = []
+        for i in range(len(self.baseDataSet)):
+            path, bboxes, joints, image_id, mask_miss = self.baseDataSet[i]
+            for j in range(len(bboxes)):
+                self.idx2imageid_bboxid.append((i, j))
+
     def __len__(self):
-        return len(self.baseDataSet)
+        return len(self.idx2imageid_bboxid)
 
     def __getitem__(self, item):
-        path, bboxes, joints, image_id, mask_miss = self.baseDataSet[item]
+        idx0, idx1 = self.idx2imageid_bboxid[item]
+
+        path, bboxes, joints, image_id, mask_miss = self.baseDataSet[idx0]
         image = cv2.imread(path)[:, :, ::-1]
         image = image.astype(np.float32)
         keypoints = joints[:, :, :2]
@@ -33,8 +41,8 @@ class PafHeatMapDataSet(object):
 
         bbox_idx = 0  # 0 if transforms is None
         if self.transforms is not None:
-            data_dict = {"image": image, "bboxes": bboxes, "keypoints":keypoints, "availability":availability,
-                         "mask_miss":mask_miss}
+            data_dict = {"image": image, "bboxes": bboxes, "keypoints": keypoints, "availability": availability,
+                         "mask_miss": mask_miss, "crop_bbox_idx": idx1}
             data_dict = self.transforms(data_dict)
             bbox_idx = data_dict["crop_bbox_idx"] if "crop_bbox_idx" in data_dict else bbox_idx
             image = data_dict["image"]
