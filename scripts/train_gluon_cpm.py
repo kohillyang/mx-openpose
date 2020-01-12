@@ -130,6 +130,11 @@ if __name__ == '__main__':
 
     train_dataset = PafHeatMapDataSet(baseDataSet, config, train_transform)
 
+    val_baseDataSet = COCOKeyPoints(root=args.dataset_root, splits=("person_keypoints_val2017",))
+    val_transform = transforms.Compose([transforms.ImagePad(dst_shape=(512, 512))])
+
+    val_dataset = PafHeatMapDataSet(val_baseDataSet, config, val_transform)
+
     # import matplotlib.pyplot as plt
     # for i in range(len(train_dataset)):
     #     image, heatmap, hm, pf, pfm, mask_miss = train_dataset[i]
@@ -165,6 +170,8 @@ if __name__ == '__main__':
     net.collect_params().reset_ctx(ctx)
 
     train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=config.TRAIN.batch_size,
+                                            shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
+    val_loader = mx.gluon.data.DataLoader(val_dataset, batch_size=config.TRAIN.batch_size,
                                             shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
 
     lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(step=[len(train_loader) * x for x in config.TRAIN.lr_step],
@@ -202,7 +209,7 @@ if __name__ == '__main__':
         metric_dict["stage{}_heat".format(i)] = metric_loss_heatmaps
         metric_dict["stage{}_paf".format(i)] = metric_batch_loss_pafmaps
 
-    for epoch in range(config.TRAIN.end_epoch ):
+    for epoch in range(config.TRAIN.end_epoch):
         eval_metrics.reset()
         for batch_cnt, batch in enumerate(tqdm.tqdm(train_loader)):
             data_list = gluon.utils.split_and_load(batch[0], ctx_list=ctx, batch_axis=0)
@@ -241,7 +248,38 @@ if __name__ == '__main__':
                 logging.info(msg)
                 eval_metrics.reset()
 
-        save_path = "{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, 0.0)
+        # calc mean loss on validate dataset for each epoch
+        loss_val_heat = mx.metric.Loss("val_loss_heat")
+        loss_val_paf = mx.metric.Loss("val_loss_paf")
+        loss_val_heat.reset()
+        loss_val_paf.reset()
+        for batch_cnt, batch in enumerate(tqdm.tqdm(val_loader)):
+            data_list = gluon.utils.split_and_load(batch[0], ctx_list=ctx, batch_axis=0)
+            heatmaps_list = gluon.utils.split_and_load(batch[1], ctx_list=ctx, batch_axis=0)
+            heatmaps_masks_list = gluon.utils.split_and_load(batch[2], ctx_list=ctx, batch_axis=0)
+            pafmaps_list = gluon.utils.split_and_load(batch[3], ctx_list=ctx, batch_axis=0)
+            pafmaps_masks_list = gluon.utils.split_and_load(batch[4], ctx_list=ctx, batch_axis=0)
+            mask_miss_list  = gluon.utils.split_and_load(batch[5], ctx_list=ctx, batch_axis=0)
+            heat_losses = []
+            paf_losses = []
+            for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks, masks_miss in zip(
+                    data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list, pafmaps_masks_list, mask_miss_list):
+                y_hat = net(data)
+                heatmap_prediction = y_hat[-1]
+                pafmap_prediction = y_hat[-2]
+                number_image_per_gpu = heatmap_prediction.shape[0]
+                loss_heatmap = mx.nd.sum(
+                    L2Loss(heatmap_prediction, heatmaps) * heatmaps_masks * masks_miss.expand_dims(axis=1))
+                loss_pafmap = mx.nd.sum(
+                    L2Loss(pafmap_prediction, pafmaps) * pafmaps_masks * masks_miss.expand_dims(axis=1))
+                heat_losses.append(loss_heatmap)
+                paf_losses.append(loss_pafmap)
+            for lh, lp in zip(heat_losses,paf_losses):
+                loss_val_heat.update(None, lh / data.shape[0])
+                loss_val_paf.update(None, lp / data.shape[0])
+        logging.info(loss_val_heat.get())
+        logging.info(loss_val_paf.get())
+        save_path = "{}-{}-{}-{}.params".format(config.TRAIN.model_prefix, epoch, loss_val_heat.get()[1], loss_val_paf.get()[1])
         net.collect_params().save(save_path)
         logging.info("Saved checkpoint to {}".format(save_path))
         trainer_path = save_path + "-trainer.states"
