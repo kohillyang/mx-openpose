@@ -25,9 +25,12 @@ def parse_args():
                         required=True, type=str)
     parser.add_argument('--gpus', help='The gpus used to validate the network.', required=False, type=str, default="0")
     parser.add_argument('--resume', help='params of the network.', required=True, type=str)
-    parser.add_argument('--viz', help='Whether to visualize the inference result.', required=False, type=bool, default=False)
-    parser.add_argument('--caffe-model', help='Whether to evaluate the original caffe model.', required=False,
-                        type=bool, default=False)
+    parser.add_argument('--viz', help='Whether to visualize the inference result.', action="store_true")
+    parser.add_argument('--caffe-model', help='Whether to evaluate the original caffe model.', action="store_true")
+    parser.add_argument('--stage', help='Stage to evaluate, 0 is recommended for resnet50-cpm. '
+                                        'and 5 is recommended for original pretrained model from caffe', required=True,
+                        type=int, default=0)
+
     args = parser.parse_args()
     return args
 
@@ -76,8 +79,8 @@ if __name__ == '__main__':
             image_resized_padded[:image_resized.shape[0], :image_resized.shape[1], :image_resized.shape[2]] = image_resized
             data = mx.nd.array(image_resized[np.newaxis]).as_in_context(ctx_list[0])
             net_results = net(data)
-            heatmap = net_results[-1][0].asnumpy().transpose((1, 2, 0))
-            pafmap = net_results[-2][0].asnumpy().transpose((1, 2, 0))
+            heatmap = net_results[args.stage * 2 + 1][0].asnumpy().transpose((1, 2, 0))
+            pafmap = net_results[args.stage * 2 + 0][0].asnumpy().transpose((1, 2, 0))
             heatmap = cv2.resize(heatmap, (0, 0), fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
             pafmap = cv2.resize(pafmap, (0, 0), fx=8, fy=8, interpolation=cv2.INTER_CUBIC)
             heatmap = heatmap[:image_resized.shape[0], :image_resized.shape[1]]

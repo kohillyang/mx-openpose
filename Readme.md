@@ -22,7 +22,10 @@ After you have trained your own model or download the pretrained model, you can 
 
 Example command:
 ```bash
-/data2/zyx/yks/anaconda3/bin/python3 scripts/evaluate.py --resume=output/cpm/resnet50-cpm-resnet-cropped-flipped_rotated-masked-26-0.0.params --dataset-root="/data3/zyx/yks/dataset/coco2017" --gpus="2" --viz
+PYTHONPATH=. /data2/zyx/yks/anaconda3/bin/python3 /data3/zyx/yks/mx-openpose/scripts/evaluate.py \
+--resume=pretrained/resnet50-cpm-resnet-cropped-flipped_rotated-47-0.0.params \
+--dataset-root="/data3/zyx/yks/dataset/coco2017" \
+--gpus="0" --stage=0 --viz
 ```
 Also, you may want to change resume, dataset root and gpus by yourself.
 
@@ -33,6 +36,7 @@ Example Results of our implementation:
 # Results on val 2017
 Our implementation:
 ```bash
+The six stage:
  Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.532
  Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.765
  Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.569
@@ -43,6 +47,18 @@ Our implementation:
  Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.607
  Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.526
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.638
+
+The first stage:
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.545
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.766
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.588
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.521
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.592
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.584
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.789
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.620
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.532
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.660
 ```
 
 mAP of the original model:
