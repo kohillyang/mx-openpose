@@ -153,7 +153,6 @@ if __name__ == '__main__':
     #     #     plt.savefig("output/figures/p{}_{}_pafmap.jpg".format(i, j))
     #     # plt.close()
     # exit()
-
     _ = train_dataset[0]  # Trigger mobula compiling
     net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
     net.hybridize(static_alloc=True, static_shape=True)
@@ -174,7 +173,7 @@ if __name__ == '__main__':
     val_loader = mx.gluon.data.DataLoader(val_dataset, batch_size=config.TRAIN.batch_size,
                                             shuffle=True, num_workers=12, thread_pool=False, last_batch="discard")
 
-    lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(step=[len(train_loader) * x for x in config.TRAIN.lr_step],
+    lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(step=config.TRAIN.lr_step,
                                                         warmup_mode="constant", factor=config.TRAIN.gamma,
                                                         base_lr=config.TRAIN.lr,
                                                         warmup_steps=config.TRAIN.warmup_step,
@@ -217,7 +216,7 @@ if __name__ == '__main__':
             heatmaps_masks_list = gluon.utils.split_and_load(batch[2], ctx_list=ctx, batch_axis=0)
             pafmaps_list = gluon.utils.split_and_load(batch[3], ctx_list=ctx, batch_axis=0)
             pafmaps_masks_list = gluon.utils.split_and_load(batch[4], ctx_list=ctx, batch_axis=0)
-            mask_miss_list  = gluon.utils.split_and_load(batch[5], ctx_list=ctx, batch_axis=0)
+            mask_miss_list = gluon.utils.split_and_load(batch[5], ctx_list=ctx, batch_axis=0)
             losses = []
             losses_dict = {}
             with ag.record():
@@ -243,8 +242,8 @@ if __name__ == '__main__':
                 metric_dict["stage{}_paf".format(i)].update(None, losses_dict["stage_{}_paf".format(i)] / number_image_per_gpu)
 
             if batch_cnt % 10 == 0:
-                msg = ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
-                msg += ",lr={}".format(trainer.learning_rate)
+                msg = "Epoch={},Step={},lr={}, ".format(epoch, trainer.optimizer.num_update, trainer.learning_rate)
+                msg += ','.join(['{}={:.3f}'.format(w, v) for w, v in zip(*eval_metrics.get())])
                 logging.info(msg)
 
         # calc mean loss on validate dataset for each epoch

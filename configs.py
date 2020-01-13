@@ -8,10 +8,10 @@ def get_coco_config():
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix, "resnet50-cpm-teachered-cropped")
     config.TRAIN.batch_size = 10
     config.TRAIN.optimizer = "SGD"
-    config.TRAIN.lr = 4e-5
+    config.TRAIN.lr = 2e-5
     config.TRAIN.momentum = 0.9
     config.TRAIN.wd = 0.0004
-    config.TRAIN.lr_step = [6, 12, 18]
+    config.TRAIN.lr_step = [136106, 136106*2, 136106*3, 136106*4]
     config.TRAIN.warmup_step = 1000
     config.TRAIN.gamma = 1.0 / 3
     config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
