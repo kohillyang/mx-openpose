@@ -214,6 +214,7 @@ if __name__ == '__main__':
         metric_dict["stage{}_heat".format(i)] = metric_loss_heatmaps
         metric_dict["stage{}_paf".format(i)] = metric_batch_loss_pafmaps
     while trainer.optimizer.num_update < config.TRAIN.end_step:
+        epoch = trainer.optimizer.num_update // len(train_loader)
         eval_metrics.reset()
         for batch_cnt, batch in enumerate(tqdm.tqdm(train_loader)):
             data_list = gluon.utils.split_and_load(batch[0], ctx_list=ctx, batch_axis=0)
