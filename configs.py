@@ -15,7 +15,7 @@ def get_coco_config():
     config.TRAIN.warmup_step = 1000
     config.TRAIN.gamma = 1.0 / 3
     config.TRAIN.warmup_lr = config.TRAIN.lr * 0.1
-    config.TRAIN.end_epoch = 24
+    config.TRAIN.end_step = 600000
     config.TRAIN.resume = None
     config.TRAIN.TRANSFORM_PARAMS = easydict.EasyDict()
 

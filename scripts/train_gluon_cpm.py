@@ -107,7 +107,7 @@ if __name__ == '__main__':
     config = get_coco_config()
     args = parse_args()
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix,
-                                             "resnet50-cpm-resnet-cropped-flipped_rotated-masked")
+                                             "resnet50-cpm-resnet-cropped-flipped_rotated-masked-no-biasbndecay")
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))
@@ -166,6 +166,12 @@ if __name__ == '__main__':
                 params[key].initialize(init=params[key].init, default_init=params[key].init)
             else:
                 params[key].initialize(default_init=default_init)
+
+    for p_name, p in params.items():
+        if p_name.endswith(('_bias', '_gamma', '_beta')):
+            p.wd_mult = 0
+            logging.info("set {}'s wd_mult to zero.".format(p_name))
+
     net.collect_params().reset_ctx(ctx)
 
     train_loader = mx.gluon.data.DataLoader(train_dataset, batch_size=config.TRAIN.batch_size,
@@ -207,8 +213,7 @@ if __name__ == '__main__':
             eval_metrics.add(child_metric)
         metric_dict["stage{}_heat".format(i)] = metric_loss_heatmaps
         metric_dict["stage{}_paf".format(i)] = metric_batch_loss_pafmaps
-
-    for epoch in range(config.TRAIN.end_epoch):
+    while trainer.optimizer.num_update < config.TRAIN.end_step:
         eval_metrics.reset()
         for batch_cnt, batch in enumerate(tqdm.tqdm(train_loader)):
             data_list = gluon.utils.split_and_load(batch[0], ctx_list=ctx, batch_axis=0)
@@ -237,7 +242,7 @@ if __name__ == '__main__':
             ag.backward(losses)
             trainer.step(config.TRAIN.batch_size, ignore_stale_grad=False)
 
-            for i in range(6):
+            for i in range(len(y_hat) // 2):
                 metric_dict["stage{}_heat".format(i)].update(None, losses_dict["stage_{}_heat".format(i)] / number_image_per_gpu)
                 metric_dict["stage{}_paf".format(i)].update(None, losses_dict["stage_{}_paf".format(i)] / number_image_per_gpu)
 
