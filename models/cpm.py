@@ -1,4 +1,6 @@
 import mxnet as mx
+import numpy as np
+import logging
 from .resnet import resnet50_v1b
 
 
@@ -608,11 +610,39 @@ class CPMNet(mx.gluon.nn.HybridBlock):
 
 
 class CPMVGGNet(mx.gluon.nn.HybridBlock):
-    def __init__(self, resize=False):
+    def __init__(self, resize=False, pretrained=True):
         super(CPMVGGNet, self).__init__()
         inputs = mx.sym.var(name="data")
         sym = get_vgg_cpm_symbol(inputs, number_of_parts=19, number_of_pafs=19)
         self.cpm_head = mx.gluon.SymbolBlock(sym, inputs)
+        params_head = self.cpm_head.collect_params()
+
+        for p_name in params_head.keys():
+            if "Mconv" in p_name:
+                if p_name.endswith(('_bias')):
+                    params_head[p_name].lr_mult = 8
+                    logging.info("set {}'s lr_mult to {}.".format(p_name, params_head[p_name].lr_mult))
+                if p_name.endswith(('_weight')):
+                    params_head[p_name].lr_mult = 4
+                    logging.info("set {}'s lr_mult to {}.".format(p_name, params_head[p_name].lr_mult))
+            else:
+                if p_name.endswith(('_bias')):
+                    params_head[p_name].lr_mult = 2
+                    logging.info("set {}'s lr_mult to {}.".format(p_name, params_head[p_name].lr_mult))
+                if p_name.endswith(('_weight')):
+                    params_head[p_name].lr_mult = 1
+                    logging.info("set {}'s lr_mult to {}.".format(p_name, params_head[p_name].lr_mult))
+
+        if pretrained:
+            net_params_pretrained = np.load("pretrained/caffe_vgg_IR.npy", allow_pickle=True).item()
+            for key in net_params_pretrained.keys():
+                if key + "_weight" in params_head:
+                    params_head[key + "_weight"]._load_init(mx.nd.array(net_params_pretrained[key]["weights"]).transpose((3, 2, 0, 1)), ctx=mx.cpu())
+                    params_head[key + "_bias"]._load_init(mx.nd.array(net_params_pretrained[key]["bias"]), ctx=mx.cpu())
+                    logging.info("loaded {} from pretrained model.".format(key))
+                else:
+                    logging.info("extra param {} is ignored.".format(key))
+            logging.info("loading pretrained model finished.")
         self._resize = resize
 
     def hybrid_forward(self, F, x):

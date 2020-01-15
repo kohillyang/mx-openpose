@@ -15,7 +15,7 @@ from mxnet import gluon
 
 from datasets.cocodatasets import COCOKeyPoints
 from datasets.dataset import PafHeatMapDataSet
-from models.cpm import CPMNet
+from models.cpm import CPMNet, CPMVGGNet
 import datasets.pose_transforms as transforms
 
 import mobula
@@ -97,6 +97,7 @@ def parse_args():
     parser.add_argument('--dataset-root', help='coco dataset root contains annotations, train2017 and val2017.',
                             required=True, type=str)
     parser.add_argument('--gpus', help='The gpus used to train the network.', required=False, type=str, default="0,1")
+    parser.add_argument('--backbone', help='The backbone used to train the network.', required=False, type=str, default="vgg")
     args = parser.parse_args()
     return args
 
@@ -154,7 +155,11 @@ if __name__ == '__main__':
     #     # plt.close()
     # exit()
     _ = train_dataset[0]  # Trigger mobula compiling
-    net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
+    if args.backbone == "vgg":
+        net = CPMVGGNet()
+    else:
+        net = CPMNet(train_dataset.number_of_keypoints, train_dataset.number_of_pafs)
+
     net.hybridize(static_alloc=True, static_shape=True)
     params = net.collect_params()
     for key in params.keys():
