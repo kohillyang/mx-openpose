@@ -98,15 +98,18 @@ def parse_args():
                             required=True, type=str)
     parser.add_argument('--gpus', help='The gpus used to train the network.', required=False, type=str, default="0,1")
     parser.add_argument('--backbone', help='The backbone used to train the network.', required=False, type=str, default="vgg")
+    parser.add_argument('--disable-fusion', help='set this if you are facing MXNET_USE_FUSION.', action="store_true")
     args = parser.parse_args()
     return args
 
 
 if __name__ == '__main__':
-    os.environ["MXNET_USE_FUSION"]="0"
     from configs import get_coco_config
     config = get_coco_config()
     args = parse_args()
+    if args.disable_fusion:
+        os.environ["MXNET_USE_FUSION"]="0"
+    
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix,
                                              "resnet50-cpm-resnet-cropped-flipped_rotated-masked-no-biasbndecay")
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)

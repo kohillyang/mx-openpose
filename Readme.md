@@ -12,7 +12,7 @@ mxnet
 # Prepare for train.
 Example command: 
 ```bash
-python3 scripts/train_gluon_cpm.py --dataset-root="/data3/zyx/yks/dataset/coco2017" --gpus="7,8"
+python3 scripts/train_gluon_cpm.py --dataset-root="/data3/zyx/yks/dataset/coco2017" --gpus="7,8" --disable-fusion
 ```
 you may want to change dataset root and gpus by yourself.
 
