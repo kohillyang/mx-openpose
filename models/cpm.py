@@ -281,7 +281,12 @@ def get_vgg_cpm_symbol(data, number_of_parts=19, number_of_pafs=19):
     Mconv7_stage6_L2 = mx.symbol.Convolution(name='Mconv7_stage6_L2', data=Mrelu6_stage6_L2, num_filter=19, pad=(0, 0),
                                              kernel=(1, 1), stride=(1, 1), no_bias=False)
 
-    return mx.symbol.Group([Mconv7_stage6_L1, Mconv7_stage6_L2])
+    return mx.symbol.Group([Mconv7_stage6_L1, Mconv7_stage6_L2,
+                            Mconv7_stage5_L1, Mconv7_stage5_L2,
+                            Mconv7_stage4_L1, Mconv7_stage4_L2,
+                            Mconv7_stage3_L1, Mconv7_stage3_L2,
+                            Mconv7_stage2_L1, Mconv7_stage2_L2,
+                            conv5_5_CPM_L1, conv5_5_CPM_L2])
 
 
 def get_cpm_symbol(data, number_of_parts, number_of_pafs):
