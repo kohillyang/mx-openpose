@@ -194,6 +194,7 @@ if __name__ == '__main__':
                                                         warmup_begin_lr=config.TRAIN.warmup_lr)
     if config.TRAIN.resume is not None:
         net.collect_params().load(config.TRAIN.resume)
+        logging.info("loaded params from {}.".format(config.TRAIN.resume))
     if config.TRAIN.optimizer == "SGD":
         trainer = mx.gluon.Trainer(
             net.collect_params(),
@@ -211,7 +212,10 @@ if __name__ == '__main__':
             {'learning_rate': 1e-4,
              }
         )
-
+    trainer_states_path = None if config.TRAIN.resume is None else config.TRAIN.resume+"-trainer.states"
+    if os.path.exists(trainer_states_path):
+        trainer.load_states(trainer_states_path)
+        logging.info("loaded trainer states from {}.".format(trainer_states_path))
     metric_dict = {}
     eval_metrics = mx.metric.CompositeEvalMetric()
     for i in range(6):
