@@ -111,7 +111,7 @@ if __name__ == '__main__':
         os.environ["MXNET_USE_FUSION"]="0"
     
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix,
-                                             "resnet50-cpm-resnet-cropped-flipped_rotated-masked-no-biasbndecay")
+                                             "cpm-{}-cropped-flipped_rotated-masked-no-biasbndecay".format(args.backbone))
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))

@@ -25,3 +25,5 @@ utils/operator_cxx/HeatGen/build
 .settings/
 
 \.pydevproject
+
+scripts/output/cpm
