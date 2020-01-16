@@ -213,7 +213,7 @@ if __name__ == '__main__':
              }
         )
     trainer_states_path = None if config.TRAIN.resume is None else config.TRAIN.resume+"-trainer.states"
-    if os.path.exists(trainer_states_path):
+    if trainer_states_path is not None and os.path.exists(trainer_states_path):
         trainer.load_states(trainer_states_path)
         logging.info("loaded trainer states from {}.".format(trainer_states_path))
     metric_dict = {}
