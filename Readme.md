@@ -34,31 +34,18 @@ Example Results of our implementation:
 ![](figures/Figure_1.png)
 
 # Results on val 2017
-Our implementation:
+Our implementation(Dilated-Resnet50 as backbone, 24 epochs, 1xlr):
 ```bash
-The six stage:
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.532
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.765
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.569
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.515
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.566
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.572
- Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.784
- Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.607
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.526
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.638
-
-The first stage:
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.545
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.766
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.588
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.521
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.592
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.584
- Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.789
- Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.620
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.532
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.660
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.560
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.780
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.603
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.542
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.597
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.598
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.800
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.636
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.551
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.668
 ```
 
 mAP of the original model:
