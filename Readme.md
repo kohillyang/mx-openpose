@@ -49,7 +49,7 @@ Our implementation(Dilated-Resnet50 as backbone, 24 epochs, 1xlr):
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.668
 ```
 
-mAP of the original model:
+mAP of the original model(converted from caffe):
 ```
  Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.590
  Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.810
@@ -63,5 +63,18 @@ mAP of the original model:
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.699
 ```
 
+mAP of the original model (re-train) 22 epochs.
+```
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.546
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.778
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.587
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.541
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.567
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.587
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.800
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.625
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.552
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.639
+```
 
 The original pretrained model converted from Caffe can be downloaded from <https://drive.google.com/drive/folders/0BzffphMuhDDMV0RZVGhtQWlmS1U>, which is bought from [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>.
