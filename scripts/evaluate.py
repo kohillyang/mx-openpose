@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     if args.caffe_model:
         net = CPMVGGNet(resize=False)
-        net.collect_params().load("pretrained/pose-0000.params")
+        net.collect_params().load(args.resume)
     else:
         net = CPMNet(19, 19, resize=False)
         net.collect_params().load(args.resume)
