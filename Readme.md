@@ -63,18 +63,18 @@ mAP of the original model(converted from caffe):
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.699
 ```
 
-mAP of the original model (re-train) 22 epochs.
+mAP of the original model (re-train) 31 epochs.
 ```
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.546
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.778
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.587
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.541
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.567
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.587
- Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.800
- Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.625
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.552
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.639
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.552
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.780
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.591
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.546
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.574
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.591
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.799
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.629
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.554
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.647
 ```
 
 The original pretrained model converted from Caffe can be downloaded from <https://drive.google.com/drive/folders/0BzffphMuhDDMV0RZVGhtQWlmS1U>, which is bought from [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>.
