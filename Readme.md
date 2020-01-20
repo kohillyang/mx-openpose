@@ -35,7 +35,7 @@ Example Results of our implementation:
 ![](figures/Figure_1.png)
 
 # Results on val 2017
-Our implementation(Dilated-Resnet50 as backbone, 21 epochs, 1xlr):
+Our implementation(Dilated-Resnet50 as backbone, 21 epochs):
 ```bash
  Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.561
  Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.788
