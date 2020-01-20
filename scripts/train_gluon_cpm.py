@@ -111,7 +111,7 @@ if __name__ == '__main__':
         os.environ["MXNET_USE_FUSION"]="0"
     
     config.TRAIN.model_prefix = os.path.join(config.TRAIN.save_prefix,
-                                             "cpm-{}-cropped-flipped_rotated-masked-no-biasbndecay".format(args.backbone))
+                                             "cpm-{}-cropped-flipped_rotated-masked-no-biasbndecay-xavier".format(args.backbone))
     os.makedirs(config.TRAIN.save_prefix, exist_ok=True)
     log_init(filename=config.TRAIN.model_prefix + "{}-train.log".format(time.time()))
     logging.info(pprint.pformat(config))
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     params = net.collect_params()
     for key in params.keys():
         if params[key]._data is None:
-            default_init = mx.init.Zero() if "bias" in key or "offset" in key else mx.init.Normal()
+            default_init = mx.init.Zero() if "bias" in key or "offset" in key else mx.init.Xavier(magnitude=1)
             default_init.set_verbosity(True)
             if params[key].init is not None and hasattr(params[key].init, "set_verbosity"):
                 params[key].init.set_verbosity(True)
@@ -281,8 +281,8 @@ if __name__ == '__main__':
             for data, heatmaps, heatmaps_masks, pafmaps, pafmaps_masks, masks_miss in zip(
                     data_list, heatmaps_list, heatmaps_masks_list, pafmaps_list, pafmaps_masks_list, mask_miss_list):
                 y_hat = net(data)
-                heatmap_prediction = y_hat[-1]
-                pafmap_prediction = y_hat[-2]
+                heatmap_prediction = y_hat[1]
+                pafmap_prediction = y_hat[0]
                 number_image_per_gpu = heatmap_prediction.shape[0]
                 loss_heatmap = mx.nd.sum(
                     L2Loss(heatmap_prediction, heatmaps) * heatmaps_masks * masks_miss.expand_dims(axis=1))
