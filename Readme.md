@@ -35,18 +35,18 @@ Example Results of our implementation:
 ![](figures/Figure_1.png)
 
 # Results on val 2017
-Our implementation(Dilated-Resnet50 as backbone, 24 epochs, 1xlr):
+Our implementation(Dilated-Resnet50 as backbone, 21 epochs, 1xlr):
 ```bash
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.560
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.780
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.603
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.542
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.597
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.598
- Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.800
- Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.636
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.551
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.668
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.561
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.788
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.610
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.544
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.596
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.600
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.803
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.641
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.555
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.666
 ```
 
 mAP of the original model(converted from caffe):
@@ -63,18 +63,18 @@ mAP of the original model(converted from caffe):
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.699
 ```
 
-mAP of the original model (re-train) 31 epochs.
+mAP of the original model (re-train) 38 epochs.
 ```
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.552
- Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.780
- Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.591
- Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.546
- Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.574
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.591
- Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.799
- Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.629
- Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.554
- Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.647
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.560
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.788
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.601
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.554
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.582
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.598
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.801
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.638
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.563
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.653
 ```
 
 The original pretrained model converted from Caffe can be downloaded from <https://drive.google.com/drive/folders/0BzffphMuhDDMV0RZVGhtQWlmS1U>, which is bought from [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>.
