@@ -77,4 +77,18 @@ mAP of the original model (re-train) 38 epochs.
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.653
 ```
 
+If initialize parameters with Xavier.
+
+```
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.564
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.787
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.610
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.555
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.588
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.601
+ Average Recall     (AR) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.800
+ Average Recall     (AR) @[ IoU=0.75      | area=   all | maxDets= 20 ] = 0.641
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets= 20 ] = 0.564
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.658
+```
 The original pretrained model converted from Caffe can be downloaded from <https://drive.google.com/drive/folders/0BzffphMuhDDMV0RZVGhtQWlmS1U>, which is bought from [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>.
