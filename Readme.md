@@ -49,7 +49,7 @@ Our implementation(Dilated-Resnet50 as backbone, 21 epochs):
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.666
 ```
 
-mAP of the original model(converted from caffe):
+mAP of the original model(converted from caffe), the score is higher than the paper reported because val dataset does not match.
 ```
  Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets= 20 ] = 0.590
  Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets= 20 ] = 0.810
