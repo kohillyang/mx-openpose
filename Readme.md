@@ -92,3 +92,5 @@ If initialize parameters with Xavier.
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets= 20 ] = 0.658
 ```
 The original pretrained model converted from Caffe can be downloaded from <https://drive.google.com/drive/folders/0BzffphMuhDDMV0RZVGhtQWlmS1U>, which is bought from [mxnet_Realtime_Multi-Person_Pose_Estimation](https://github.com/dragonfly90/mxnet_Realtime_Multi-Person_Pose_Estimation) by @dragonfly90.<br>.
+
+You can download pretrained models of VGG19 trained on imagenet converted from caffe and VGG19 trained on COCO train2017 from <https://drive.google.com/drive/folders/1l5SOCr0P5w3-HxetQ1W0HmSgSyrmK0ha?usp=sharing>.
