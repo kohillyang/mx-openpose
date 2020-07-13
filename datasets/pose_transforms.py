@@ -125,7 +125,7 @@ class RandomCenterCrop(object):
         start_y = max(center_y - self.crop_size_y // 2, 0)
 
         end_x = min(center_x + self.crop_size_x // 2, img_ori.shape[1])
-        end_y = min(center_y + self.crop_size_y // 2, img_ori.shape[1])
+        end_y = min(center_y + self.crop_size_y // 2, img_ori.shape[0])
 
         offset_x = center_x - self.crop_size_x // 2
         offset_y = center_y - self.crop_size_y // 2
